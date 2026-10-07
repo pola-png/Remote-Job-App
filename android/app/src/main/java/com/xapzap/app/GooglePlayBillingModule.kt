@@ -86,9 +86,10 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
             .setProductList(subscriptionList)
             .build()
 
-        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && productDetailsList.isNotEmpty()) {
-                productDetailsList.forEach { details ->
+        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
+            val list = productDetailsResult.productDetailsList ?: emptyList()
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && list.isNotEmpty()) {
+                list.forEach { details ->
                     productDetailsMap[details.productId] = details
                     Log.d(TAG, "Loaded product details for: ${details.productId}")
                 }
@@ -124,10 +125,11 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
                 .setProductList(subscriptionList)
                 .build()
 
-            billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+            billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     val array = Arguments.createArray()
-                    productDetailsList.forEach { details ->
+                    val list = productDetailsResult.productDetailsList ?: emptyList()
+                    list.forEach { details ->
                         productDetailsMap[details.productId] = details
                         val map = Arguments.createMap()
                         map.putString("productId", details.productId)
@@ -184,8 +186,8 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
                     )
                     .build()
 
-                billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
-                    val details = productDetailsList.firstOrNull()
+                billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
+                    val details = productDetailsResult.productDetailsList?.firstOrNull()
                     if (details != null) {
                         productDetailsMap[productId] = details
                         executeBillingFlow(activity, details)
