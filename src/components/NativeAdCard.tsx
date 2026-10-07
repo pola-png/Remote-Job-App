@@ -60,9 +60,7 @@ const NATIVE_SPONSORS = [
 
 export const NativeAdCard: React.FC<Props> = ({ placement = 'feed_native', onUpgradePress }) => {
   const [adLoaded, setAdLoaded] = useState(false);
-  const [activeUnitId, setActiveUnitId] = useState<string>(
-    ADMOB_CONFIG.AD_UNITS.BANNER || TestIds.BANNER
-  );
+  const activeUnitId = __DEV__ ? TestIds.BANNER : ADMOB_CONFIG.AD_UNITS.BANNER;
   const [adFailed, setAdFailed] = useState(false);
 
   const sponsorIndex = Math.floor(Date.now() / 120000) % NATIVE_SPONSORS.length;
@@ -85,12 +83,7 @@ export const NativeAdCard: React.FC<Props> = ({ placement = 'feed_native', onUpg
             }}
             onAdLoaded={() => setAdLoaded(true)}
             onAdFailedToLoad={(error) => {
-              if (activeUnitId !== TestIds.BANNER) {
-                // If production unit has no inventory yet, seamlessly retry with Google Test Banner unit
-                setActiveUnitId(TestIds.BANNER);
-              } else {
-                setAdFailed(true);
-              }
+              setAdFailed(true);
             }}
           />
         </View>

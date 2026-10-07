@@ -8,6 +8,7 @@ import {
   StatusBar,
   ActivityIndicator,
   BackHandler,
+  Platform,
 } from 'react-native';
 import {
   Briefcase,
@@ -509,6 +510,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0B1120',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   loadingContainer: {
     flex: 1,

@@ -33,7 +33,7 @@ export const LandingScreen: React.FC<Props> = ({
   userEmail,
 }: Props) => {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* App Title Badge */}
@@ -144,7 +144,7 @@ export const LandingScreen: React.FC<Props> = ({
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

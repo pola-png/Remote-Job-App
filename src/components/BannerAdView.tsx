@@ -52,9 +52,7 @@ const SPONSORS = [
 
 export const BannerAdView: React.FC<Props> = ({ placement = 'feed_inline', onUpgradePress }) => {
   const [adLoaded, setAdLoaded] = useState(false);
-  const [activeUnitId, setActiveUnitId] = useState<string>(
-    ADMOB_CONFIG.AD_UNITS.BANNER || TestIds.BANNER
-  );
+  const activeUnitId = __DEV__ ? TestIds.BANNER : ADMOB_CONFIG.AD_UNITS.BANNER;
   const [adFailed, setAdFailed] = useState(false);
 
   // Deterministic sponsor pick based on current minute to rotate
@@ -78,11 +76,7 @@ export const BannerAdView: React.FC<Props> = ({ placement = 'feed_inline', onUpg
             }}
             onAdLoaded={() => setAdLoaded(true)}
             onAdFailedToLoad={(error) => {
-              if (activeUnitId !== TestIds.BANNER) {
-                setActiveUnitId(TestIds.BANNER);
-              } else {
-                setAdFailed(true);
-              }
+              setAdFailed(true);
             }}
           />
         </View>

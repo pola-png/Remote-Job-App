@@ -24,27 +24,45 @@ export const AdMobService = {
   },
 
   getRewardedAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.REWARDED || TestIds.REWARDED;
+    if (__DEV__) {
+      return TestIds.REWARDED;
+    }
+    return ADMOB_CONFIG.AD_UNITS.REWARDED;
   },
 
   getInterstitialAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.INTERSTITIAL || TestIds.INTERSTITIAL;
+    if (__DEV__) {
+      return TestIds.INTERSTITIAL;
+    }
+    return ADMOB_CONFIG.AD_UNITS.INTERSTITIAL;
   },
 
   getAppOpenAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.APP_OPEN || TestIds.APP_OPEN;
+    if (__DEV__) {
+      return TestIds.APP_OPEN;
+    }
+    return ADMOB_CONFIG.AD_UNITS.APP_OPEN;
   },
 
   getBannerAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.BANNER || TestIds.BANNER;
+    if (__DEV__) {
+      return TestIds.BANNER;
+    }
+    return ADMOB_CONFIG.AD_UNITS.BANNER;
   },
 
   getNativeAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.NATIVE_ADVANCED || TestIds.GAM_BANNER;
+    if (__DEV__) {
+      return TestIds.BANNER;
+    }
+    return ADMOB_CONFIG.AD_UNITS.BANNER;
   },
 
   getRewardedInterstitialAdUnitId(): string {
-    return ADMOB_CONFIG.AD_UNITS.REWARDED_INTERSTITIAL || TestIds.REWARDED_INTERSTITIAL;
+    if (__DEV__) {
+      return TestIds.REWARDED_INTERSTITIAL;
+    }
+    return ADMOB_CONFIG.AD_UNITS.REWARDED_INTERSTITIAL;
   },
 
   /**
@@ -69,22 +87,7 @@ export const AdMobService = {
 
       rewarded.addAdEventListener(AdEventType.ERROR, (error) => {
         isPreloading = false;
-        console.warn('AdMob Preload error, caching fallback unit:', error);
-        if (adUnitId !== TestIds.REWARDED) {
-          try {
-            const fallbackRewarded = RewardedAd.createForAdRequest(TestIds.REWARDED);
-            fallbackRewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
-              preloadedRewarded = fallbackRewarded;
-              isPreloadedReady = true;
-              console.log('Google Test Rewarded Preloaded & Ready');
-            });
-            fallbackRewarded.addAdEventListener(AdEventType.ERROR, () => {
-              preloadedRewarded = null;
-              isPreloadedReady = false;
-            });
-            fallbackRewarded.load();
-          } catch (_) {}
-        }
+        console.warn('AdMob Preload error:', error);
       });
 
       rewarded.load();
