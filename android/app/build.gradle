@@ -200,8 +200,7 @@ dependencies {
     implementation("com.android.billingclient:billing:8.0.0")
 
     // Firebase Cloud Messaging (FCM) & Google Services
-    implementation platform('com.google.firebase:firebase-bom:33.9.0')
-    implementation 'com.google.firebase:firebase-messaging'
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
 }
 
 apply plugin: "com.google.gms.google-services"
