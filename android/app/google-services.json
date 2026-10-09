@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "741833699111",
+    "project_id": "xapzap-34fb4",
+    "storage_bucket": "xapzap-34fb4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741833699111:android:5f6e675bfdf184c0fc0302",
+        "android_client_info": {
+          "package_name": "com.xapzap.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4ZpqQTZMJ5-APa23r41e5M9Kuw2GyLH4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

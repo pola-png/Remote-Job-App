@@ -80,14 +80,34 @@ export const NotificationService = {
           );
           const isGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
           await this.setPermissionGranted(isGranted);
+          if (isGranted) {
+            await this.initializeFcmTopicSubscription();
+          }
           return isGranted;
         }
       }
       await this.setPermissionGranted(true);
+      await this.initializeFcmTopicSubscription();
       return true;
     } catch (_) {
       return false;
     }
+  },
+
+  async initializeFcmTopicSubscription(): Promise<string | null> {
+    try {
+      const { NativeModules } = require('react-native');
+      const FirebasePush = NativeModules.FirebasePushModule;
+      if (FirebasePush) {
+        await FirebasePush.subscribeToTopic('all-users').catch(() => {});
+        const token = await FirebasePush.getFcmToken().catch(() => null);
+        console.log('[FCM] Device registered and subscribed to topic "all-users". Token:', token);
+        return token;
+      }
+    } catch (e) {
+      console.warn('[FCM] Error initializing push topic subscription:', e);
+    }
+    return null;
   },
 
   async setPermissionGranted(granted: boolean): Promise<void> {
@@ -97,12 +117,18 @@ export const NotificationService = {
     } catch (_) {}
   },
 
-  async registerPushToken(userId: string, token: string): Promise<void> {
+  async registerPushToken(userId: string, token?: string): Promise<void> {
     try {
-      await supabase.from('profiles').update({
-        push_token: token,
-        updated_at: new Date().toISOString(),
-      }).eq('id', userId);
+      let fcmToken = token;
+      if (!fcmToken) {
+        fcmToken = (await this.initializeFcmTopicSubscription()) || undefined;
+      }
+      if (fcmToken && userId) {
+        await supabase.from('profiles').update({
+          push_token: fcmToken,
+          updated_at: new Date().toISOString(),
+        }).eq('id', userId);
+      }
     } catch (_) {}
   },
 

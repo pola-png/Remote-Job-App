@@ -25,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
             val packages = PackageList(this).packages.toMutableList()
             packages.add(InAppUpdatePackage())
             packages.add(GooglePlayBillingPackage())
+            packages.add(FirebasePushPackage())
             return packages
           }
 

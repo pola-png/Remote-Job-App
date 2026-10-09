@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   BackHandler,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import {
   Briefcase,
@@ -170,10 +171,29 @@ export default function App() {
         console.warn('Google Mobile Ads Init Warning:', err);
       });
 
-    // Request Real Native Phone Notification Permission on App Launch
+    // Request Real Native Phone Notification Permission & Subscribe to FCM Topics
     NotificationService.requestNativeDevicePermission().then(() => {
       loadUnreadCount();
     });
+
+    // Listen for real Firebase Push Notifications received while app is foregrounded/active
+    const pushSubscription = DeviceEventEmitter.addListener(
+      'onRemotePushNotificationReceived',
+      async (data: any) => {
+        const title = data.title || 'Remote Job Alert';
+        const body = data.body || 'New opportunities are live.';
+        const targetScreen = data.targetScreen as TabType;
+
+        const notif = await NotificationService.triggerInAppNotification(
+          title,
+          body,
+          'JOB_ALERT',
+          targetScreen
+        );
+        setActiveToast(notif);
+        loadUnreadCount();
+      }
+    );
 
     // Play Store Update Check on App Start
     AppUpdateService.checkForUpdates().then((info) => {
@@ -185,7 +205,10 @@ export default function App() {
 
     loadUnreadCount();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      pushSubscription.remove();
+    };
   }, []);
 
   const handleOpenPolicyFromAuth = (type: 'PRIVACY' | 'TERMS') => {
