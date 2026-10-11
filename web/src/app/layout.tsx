@@ -3,7 +3,7 @@ import './globals.css';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.remotejobshq.online'),
+  metadataBase: new URL('https://remotejobshq.online'),
   title: {
     default: 'Remote Jobs HQ | Find High-Paying Remote Tech, Design & Marketing Jobs',
     template: '%s | Remote Jobs HQ'
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://www.remotejobshq.online',
+    url: 'https://remotejobshq.online',
     siteName: 'Remote Jobs HQ',
     title: 'Remote Jobs HQ - Find Verified Work From Anywhere Jobs',
     description: 'Explore curated remote tech, engineering, design, and marketing jobs from vetted companies worldwide.',
     images: [
       {
-        url: 'https://www.remotejobshq.online/og-image.png',
+        url: 'https://remotejobshq.online/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Remote Jobs HQ - The #1 Remote Job Platform'
@@ -58,6 +58,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: 'f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc',
+    other: {
+      monetag: '3ba7674718137c812899fbff9b92504c',
+    },
   },
 };
 
@@ -69,8 +72,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="monetag" content="3ba7674718137c812899fbff9b92504c" />
         <meta name="google-site-verification" content="f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc" />
-        <link rel="canonical" href="https://www.remotejobshq.online" />
+        <link rel="canonical" href="https://remotejobshq.online" />
       </head>
       <body>
         <header className="navbar">

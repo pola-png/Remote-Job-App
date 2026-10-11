@@ -13,7 +13,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locName = decodeURIComponent(params.location).replace(/-/g, ' ');
   const formattedLoc = locName.charAt(0).toUpperCase() + locName.slice(1);
-  const canonicalUrl = `https://www.remotejobshq.online/location/${encodeURIComponent(params.location.toLowerCase())}`;
+  const canonicalUrl = `https://remotejobshq.online/location/${encodeURIComponent(params.location.toLowerCase())}`;
 
   return {
     title: `Remote Jobs in ${formattedLoc} (Work From Anywhere) | Remote Jobs HQ`,
@@ -51,7 +51,7 @@ export default async function LocationPage({ params }: Props) {
     .limit(80);
 
   const jobs: RemoteJob[] = (rawJobs || []).map(mapJobRow);
-  const canonicalUrl = `https://www.remotejobshq.online/location/${encodeURIComponent(params.location.toLowerCase())}`;
+  const canonicalUrl = `https://remotejobshq.online/location/${encodeURIComponent(params.location.toLowerCase())}`;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -63,7 +63,7 @@ export default async function LocationPage({ params }: Props) {
       '@type': 'ListItem',
       position: idx + 1,
       name: `${job.title} at ${job.company}`,
-      url: `https://www.remotejobshq.online/jobs/${encodeURIComponent(job.id)}`,
+      url: `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`,
     })),
   };
 
@@ -75,13 +75,13 @@ export default async function LocationPage({ params }: Props) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://www.remotejobshq.online',
+        item: 'https://remotejobshq.online',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Locations',
-        item: 'https://www.remotejobshq.online',
+        item: 'https://remotejobshq.online',
       },
       {
         '@type': 'ListItem',

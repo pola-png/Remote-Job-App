@@ -13,7 +13,7 @@ interface DynamicJobRecord {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://www.remotejobshq.online';
+  const baseUrl = 'https://remotejobshq.online';
 
   // 1. Fetch 100% of live active jobs from Supabase using pagination (bypassing PostgREST 1000 row cap)
   const allJobs: DynamicJobRecord[] = [];

@@ -77,7 +77,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     icon: '💼',
   };
 
-  const canonicalUrl = `https://www.remotejobshq.online/category/${encodeURIComponent(slug)}`;
+  const canonicalUrl = `https://remotejobshq.online/category/${encodeURIComponent(slug)}`;
 
   return {
     title: `${cat.title} (Work From Anywhere) | Remote Jobs HQ`,
@@ -112,7 +112,7 @@ export default async function CategoryPage({ params }: Props) {
     .limit(100);
 
   const jobs: RemoteJob[] = (rawJobs || []).map(mapJobRow);
-  const canonicalUrl = `https://www.remotejobshq.online/category/${encodeURIComponent(slug)}`;
+  const canonicalUrl = `https://remotejobshq.online/category/${encodeURIComponent(slug)}`;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -124,7 +124,7 @@ export default async function CategoryPage({ params }: Props) {
       '@type': 'ListItem',
       position: idx + 1,
       name: `${job.title} at ${job.company}`,
-      url: `https://www.remotejobshq.online/jobs/${encodeURIComponent(job.id)}`,
+      url: `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`,
     })),
   };
 
@@ -136,13 +136,13 @@ export default async function CategoryPage({ params }: Props) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://www.remotejobshq.online',
+        item: 'https://remotejobshq.online',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Categories',
-        item: 'https://www.remotejobshq.online/#categories',
+        item: 'https://remotejobshq.online/#categories',
       },
       {
         '@type': 'ListItem',

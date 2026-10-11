@@ -76,7 +76,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `${job.title} at ${job.company} (100% Remote)`;
   const description = `Apply for ${job.title} at ${job.company}. ${job.salary && !job.salary.toLowerCase().includes('competitive') ? `Salary: ${job.salary}.` : ''} Remote work opportunity. Learn more and apply now on Remote Jobs HQ.`;
-  const canonicalUrl = `https://www.remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
 
   return {
     title,
@@ -91,7 +91,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: canonicalUrl,
       images: [
         {
-          url: job.company_logo || 'https://www.remotejobshq.online/og-image.png',
+          url: job.company_logo || 'https://remotejobshq.online/og-image.png',
           width: 800,
           height: 600,
           alt: `${job.company} is hiring for ${job.title}`,
@@ -115,7 +115,7 @@ export default async function JobDetailPage({ params }: Props) {
   }
 
   const applyUrl = job.apply_url || job.direct_apply_url || '#';
-  const canonicalUrl = `https://www.remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
 
   // Google for Jobs Schema.org JobPosting structured JSON-LD
   const jobPostingSchema = {
@@ -134,7 +134,7 @@ export default async function JobDetailPage({ params }: Props) {
     hiringOrganization: {
       '@type': 'Organization',
       name: job.company,
-      logo: job.company_logo || 'https://www.remotejobshq.online/icon.png',
+      logo: job.company_logo || 'https://remotejobshq.online/icon.png',
     },
     jobLocationType: 'TELECOMMUTE',
     applicantLocationRequirements: {
@@ -163,13 +163,13 @@ export default async function JobDetailPage({ params }: Props) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://www.remotejobshq.online',
+        item: 'https://remotejobshq.online',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Jobs',
-        item: 'https://www.remotejobshq.online',
+        item: 'https://remotejobshq.online',
       },
       {
         '@type': 'ListItem',

@@ -12,7 +12,7 @@ export async function generateMetadata({
   searchParams?: { page?: string };
 }): Promise<Metadata> {
   const pageNum = parseInt(searchParams?.page || '1', 10) || 1;
-  const canonicalUrl = `https://www.remotejobshq.online/all-jobs${pageNum > 1 ? `?page=${pageNum}` : ''}`;
+  const canonicalUrl = `https://remotejobshq.online/all-jobs${pageNum > 1 ? `?page=${pageNum}` : ''}`;
 
   return {
     title: `All Remote Jobs Directory (Page ${pageNum}) | Remote Jobs HQ`,
