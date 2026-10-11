@@ -58,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/jobs/${encodeURIComponent(job.id)}`,
       lastModified: date,
       changeFrequency: 'daily',
-      priority: 0.9,
+      priority: 1.0,
     };
   });
 
@@ -92,11 +92,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/?category=${encodeURIComponent(cat)}`,
       lastModified: catLastMod,
       changeFrequency: 'hourly',
-      priority: 0.85,
+      priority: 1.0,
     };
   });
 
-  // 5. Main Site Routes with dynamic database-driven last modified dates
+  // 5. Main Site Routes with dynamic database-driven last modified dates (100% Priority for all pages)
   const mainRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -108,19 +108,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/post-job`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
-      priority: 0.8,
+      priority: 1.0,
     },
     {
       url: `${baseUrl}/privacy`,
       lastModified: new Date('2026-10-01'),
       changeFrequency: 'monthly',
-      priority: 0.3,
+      priority: 1.0,
     },
     {
       url: `${baseUrl}/terms`,
       lastModified: new Date('2026-10-01'),
       changeFrequency: 'monthly',
-      priority: 0.3,
+      priority: 1.0,
     },
   ];
 
