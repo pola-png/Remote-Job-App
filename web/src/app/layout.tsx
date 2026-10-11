@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     google: 'f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc',
     other: {
       monetag: '3ba7674718137c812899fbff9b92504c',
-      'google-adsense-account': 'ca-pub-6927256363821778',
+      'google-adsense-account': 'ca-pub-3004467059794580',
     },
   },
 };
@@ -82,10 +82,10 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="google-adsense-account" content="ca-pub-6927256363821778" />
+        <meta name="google-adsense-account" content="ca-pub-3004467059794580" />
         <script
           async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6927256363821778"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3004467059794580"
           crossOrigin="anonymous"
         />
         <meta name="monetag" content="3ba7674718137c812899fbff9b92504c" />
