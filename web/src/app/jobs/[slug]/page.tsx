@@ -8,11 +8,14 @@ interface Props {
   params: { slug: string };
 }
 
-export const revalidate = 60; // ISR: 1 minute
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
-async function getJobBySlug(slug: string): Promise<RemoteJob | null> {
+async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
   try {
-    // 1. Direct match by id
+    const slug = decodeURIComponent(rawSlug).trim();
+
+    // 1. Direct match by exact id (e.g. "jobicy_154667" or UUID)
     const { data: directData } = await supabase
       .from('job_postings')
       .select('*')
@@ -21,24 +24,36 @@ async function getJobBySlug(slug: string): Promise<RemoteJob | null> {
 
     if (directData) return mapJobRow(directData);
 
-    // 2. Extract potential ID from start of slug (e.g. "jobicy_154667-title" or "uuid-title")
-    const parts = slug.split('-');
-    const potentialId = parts[0];
+    // 2. Extract potential ID prefix if slug has format "jobicy_154667-title..."
+    const match = slug.match(/^([a-zA-Z0-9_]+)-/);
+    if (match && match[1]) {
+      const { data: prefixData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('id', match[1])
+        .maybeSingle();
 
-    const { data: idMatchData } = await supabase
-      .from('job_postings')
-      .select('*')
-      .eq('id', potentialId)
-      .maybeSingle();
+      if (prefixData) return mapJobRow(prefixData);
+    }
 
-    if (idMatchData) return mapJobRow(idMatchData);
+    // 3. Extract standard UUID prefix if present
+    const uuidMatch = slug.match(/^[0-9a-fA-F-]{36}/);
+    if (uuidMatch) {
+      const { data: uuidData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('id', uuidMatch[0])
+        .maybeSingle();
 
-    // 3. Match by title slug
-    const titleSearch = slug.replace(/-/g, ' ');
+      if (uuidData) return mapJobRow(uuidData);
+    }
+
+    // 4. Fallback search by title
+    const titleSearch = slug.replace(/[-_]/g, ' ').replace(/^jobicy\s+\d+\s+/i, '');
     const { data: titleMatchData } = await supabase
       .from('job_postings')
       .select('*')
-      .ilike('title', `%${titleSearch.slice(0, 30)}%`)
+      .ilike('title', `%${titleSearch.slice(0, 25)}%`)
       .limit(1)
       .maybeSingle();
 

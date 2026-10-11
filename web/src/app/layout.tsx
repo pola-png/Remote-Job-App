@@ -77,7 +77,7 @@ export default function RootLayout({
             <nav className="nav-links">
               <Link href="/" className="nav-link">Find Jobs</Link>
               <Link href="/#categories" className="nav-link">Categories</Link>
-              <Link href="/post-job" className="btn-primary">Post a Job ($99)</Link>
+              <Link href="/post-job" className="btn-primary">Post a Job</Link>
             </nav>
           </div>
         </header>

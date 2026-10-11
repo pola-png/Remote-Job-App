@@ -141,11 +141,10 @@ export default async function HomePage({
             </div>
           ) : (
             jobs.map((job) => {
-              const jobSlug = job.slug || `${job.id}`;
               const salaryDisplay = job.salary && !job.salary.toLowerCase().includes('competitive') ? job.salary : null;
 
               return (
-                <Link key={job.id} href={`/jobs/${jobSlug}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
+                <Link key={job.id} href={`/jobs/${encodeURIComponent(job.id)}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
                   <div className="job-info-left">
                     <div className="company-logo">
                       {job.company_logo ? (
