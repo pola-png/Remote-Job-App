@@ -62,41 +62,108 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  // 4. Dynamic Category Hubs based on live jobs in database
-  const detectedCategories = Array.from(
-    new Set(allJobs.map((j) => (j.category || '').trim().toUpperCase()).filter(Boolean))
-  );
-
-  const fallbackCategories = [
-    'DEVELOPMENT',
-    'DESIGN',
-    'MARKETING',
-    'SALES',
-    'SUPPORT',
-    'WRITING',
-    'DATA',
-    'FINANCE',
-    'ASSISTANT',
+  // 4. Dedicated Programmatic Category Hubs (Clean URLs)
+  const categorySlugs = [
+    'development',
+    'design',
+    'marketing',
+    'sales',
+    'support',
+    'writing',
+    'data',
+    'finance',
+    'assistant',
   ];
 
-  const uniqueCategories = Array.from(new Set([...detectedCategories, ...fallbackCategories]));
+  const categoryRoutes: MetadataRoute.Sitemap = categorySlugs.map((slug) => ({
+    url: `${baseUrl}/category/${slug}`,
+    lastModified: latestJobTimestamp,
+    changeFrequency: 'hourly' as const,
+    priority: 1.0,
+  }));
 
-  const categoryRoutes: MetadataRoute.Sitemap = uniqueCategories.map((cat) => {
-    // Find latest job timestamp in this category
-    const catJobs = allJobs.filter((j) => (j.category || '').trim().toUpperCase() === cat);
-    const catLastMod = catJobs.length > 0 && (catJobs[0].updated_at || catJobs[0].created_at)
-      ? new Date(catJobs[0].updated_at || catJobs[0].created_at!)
-      : latestJobTimestamp;
+  // 5. High-Demand Role & Skill Programmatic Landing Pages (Ultra SEO)
+  const roleSlugs = [
+    'react',
+    'python',
+    'javascript',
+    'typescript',
+    'nodejs',
+    'frontend',
+    'backend',
+    'fullstack',
+    'devops',
+    'aws',
+    'product-manager',
+    'ui-ux',
+    'copywriter',
+    'content-writer',
+    'seo',
+    'data-analyst',
+    'data-engineer',
+    'machine-learning',
+    'ai',
+    'customer-service',
+    'customer-support',
+    'account-executive',
+    'sales-development',
+    'recruiter',
+    'financial-analyst',
+    'bookkeeper',
+    'virtual-assistant',
+    'qa-engineer',
+    'mobile-developer',
+    'flutter',
+    'solidity',
+    'cybersecurity',
+  ];
 
-    return {
-      url: `${baseUrl}/?category=${encodeURIComponent(cat)}`,
-      lastModified: catLastMod,
-      changeFrequency: 'hourly',
+  const roleRoutes: MetadataRoute.Sitemap = roleSlugs.map((slug) => ({
+    url: `${baseUrl}/role/${slug}`,
+    lastModified: latestJobTimestamp,
+    changeFrequency: 'daily' as const,
+    priority: 1.0,
+  }));
+
+  // 6. High-CTR Location Hub Programmatic Pages
+  const locationSlugs = [
+    'worldwide',
+    'united-states',
+    'europe',
+    'united-kingdom',
+    'canada',
+    'germany',
+    'netherlands',
+    'australia',
+    'asia',
+    'latin-america',
+    'remote-anywhere',
+  ];
+
+  const locationRoutes: MetadataRoute.Sitemap = locationSlugs.map((slug) => ({
+    url: `${baseUrl}/location/${slug}`,
+    lastModified: latestJobTimestamp,
+    changeFrequency: 'daily' as const,
+    priority: 1.0,
+  }));
+
+  // 7. Crawlable Directory Pages for Complete Job Spidering
+  const directoryRoutes: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/all-jobs`,
+      lastModified: latestJobTimestamp,
+      changeFrequency: 'always' as const,
       priority: 1.0,
-    };
-  });
+    },
+    ...Array.from({ length: 15 }, (_, i) => ({
+      url: `${baseUrl}/all-jobs?page=${i + 1}`,
+      lastModified: latestJobTimestamp,
+      changeFrequency: 'daily' as const,
+      priority: 1.0,
+    })),
+  ];
 
-  // 5. Main Site Routes with dynamic database-driven last modified dates (100% Priority for all pages)
+  // 8. Main Site Core Routes (100% Priority for all pages)
   const mainRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -124,5 +191,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [...mainRoutes, ...categoryRoutes, ...jobRoutes];
+  return [
+    ...mainRoutes,
+    ...categoryRoutes,
+    ...roleRoutes,
+    ...locationRoutes,
+    ...directoryRoutes,
+    ...jobRoutes,
+  ];
 }

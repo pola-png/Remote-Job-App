@@ -84,23 +84,80 @@ export default function RootLayout({
 
         <main>{children}</main>
 
-        <footer className="footer">
-          <div className="container footer-content">
-            <div>
-              <div className="brand-logo" style={{ marginBottom: '0.5rem' }}>🌐 RemoteJobsHQ</div>
-              <p style={{ color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
-                Connecting top talent with the best remote companies globally.
-              </p>
+        <footer className="footer" style={{ borderTop: '1px solid var(--border-color)', marginTop: '4rem', padding: '3.5rem 0 2rem 0', background: '#070C18' }}>
+          <div className="container">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '2.5rem', marginBottom: '3rem' }}>
+              <div>
+                <div className="brand-logo" style={{ marginBottom: '0.75rem' }}>🌐 RemoteJobsHQ</div>
+                <p style={{ color: 'var(--text-subtle)', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  The premier verified global job platform connecting top talent with 1,200+ high-paying remote roles in engineering, product, design, and marketing.
+                </p>
+                <div style={{ marginTop: '1rem' }}>
+                  <Link href="/all-jobs" style={{ color: '#38BDF8', fontSize: '0.85rem', fontWeight: 700 }}>
+                    📂 Complete Jobs Directory →
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Popular Categories</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  <Link href="/category/development" className="nav-link">Software & Tech</Link>
+                  <Link href="/category/design" className="nav-link">Design & Creative</Link>
+                  <Link href="/category/marketing" className="nav-link">Marketing & Growth</Link>
+                  <Link href="/category/sales" className="nav-link">Sales & BD</Link>
+                  <Link href="/category/support" className="nav-link">Customer Support</Link>
+                  <Link href="/category/data" className="nav-link">Data & AI</Link>
+                  <Link href="/category/writing" className="nav-link">Writing & Content</Link>
+                  <Link href="/category/finance" className="nav-link">Finance & Payroll</Link>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Trending Roles</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  <Link href="/role/react" className="nav-link">React Developer</Link>
+                  <Link href="/role/python" className="nav-link">Python Engineer</Link>
+                  <Link href="/role/fullstack" className="nav-link">Full Stack Engineer</Link>
+                  <Link href="/role/devops" className="nav-link">DevOps Engineer</Link>
+                  <Link href="/role/product-manager" className="nav-link">Product Manager</Link>
+                  <Link href="/role/ui-ux" className="nav-link">UI/UX Designer</Link>
+                  <Link href="/role/copywriter" className="nav-link">Copywriter</Link>
+                  <Link href="/role/data-analyst" className="nav-link">Data Analyst</Link>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Remote Locations</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  <Link href="/location/worldwide" className="nav-link">Worldwide (100% Anywhere)</Link>
+                  <Link href="/location/united-states" className="nav-link">United States</Link>
+                  <Link href="/location/europe" className="nav-link">Europe</Link>
+                  <Link href="/location/united-kingdom" className="nav-link">United Kingdom</Link>
+                  <Link href="/location/canada" className="nav-link">Canada</Link>
+                  <Link href="/location/australia" className="nav-link">Australia</Link>
+                  <Link href="/location/latin-america" className="nav-link">Latin America</Link>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Platform</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                  <Link href="/" className="nav-link">Browse Jobs</Link>
+                  <Link href="/post-job" className="nav-link">Post a Job</Link>
+                  <Link href="/all-jobs" className="nav-link">All Jobs Index</Link>
+                  <Link href="/privacy" className="nav-link">Privacy Policy</Link>
+                  <Link href="/terms" className="nav-link">Terms of Service</Link>
+                  <a href="https://play.google.com/store/apps/details?id=com.xapzap.app" target="_blank" rel="noopener noreferrer" className="nav-link" style={{ color: '#38BDF8' }}>
+                    📱 Android App
+                  </a>
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <Link href="/" className="nav-link">Browse Jobs</Link>
-              <Link href="/post-job" className="nav-link">Post a Job</Link>
-              <Link href="/privacy" className="nav-link">Privacy Policy</Link>
-              <Link href="/terms" className="nav-link">Terms of Service</Link>
+
+            <div style={{ paddingTop: '2rem', borderTop: '1px solid var(--border-color)', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
+              © {new Date().getFullYear()} RemoteJobsHQ.online. All rights reserved. Ultra-optimized for Google Search & Remote Job Seekers.
             </div>
-          </div>
-          <div className="container" style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.8rem' }}>
-            © {new Date().getFullYear()} RemoteJobsHQ.online. All rights reserved.
           </div>
         </footer>
       </body>
