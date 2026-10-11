@@ -111,6 +111,7 @@ export default async function JobDetailPage({ params }: Props) {
 
   if (!job) {
     notFound();
+    return null;
   }
 
   const applyUrl = job.apply_url || job.direct_apply_url || '#';
