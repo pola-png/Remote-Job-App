@@ -1,12 +1,12 @@
 import { MetadataRoute } from 'next';
 import { supabase } from '@/lib/supabase';
 
-export const revalidate = 3600; // Update sitemap hourly
+export const revalidate = 1800; // Update sitemap every 30 minutes
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://remotejobshq.online';
 
-  // Base static routes
+  // 1. Primary Static Landing Routes
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -34,26 +34,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // 2. High-CTR Category Hubs for Google Indexing
+  const categories = [
+    'DEVELOPMENT',
+    'DESIGN',
+    'MARKETING',
+    'SALES',
+    'SUPPORT',
+    'WRITING',
+    'DATA',
+    'FINANCE',
+    'ASSISTANT',
+  ];
+
+  const categoryRoutes: MetadataRoute.Sitemap = categories.map((cat) => ({
+    url: `${baseUrl}/?category=${cat}`,
+    lastModified: new Date(),
+    changeFrequency: 'hourly',
+    priority: 0.85,
+  }));
+
+  // 3. Dynamic Individual Job URLs
   try {
     const { data: jobs } = await supabase
       .from('job_postings')
-      .select('id, title, created_at')
+      .select('id, updated_at, created_at')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
-      .limit(1000);
+      .limit(5000);
 
-    const jobRoutes: MetadataRoute.Sitemap = (jobs || []).map((job) => {
-      const slug = job.id;
-      return {
-        url: `${baseUrl}/jobs/${slug}`,
-        lastModified: new Date(job.created_at || Date.now()),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      };
-    });
+    const jobRoutes: MetadataRoute.Sitemap = (jobs || []).map((job) => ({
+      url: `${baseUrl}/jobs/${encodeURIComponent(job.id)}`,
+      lastModified: new Date(job.updated_at || job.created_at || Date.now()),
+      changeFrequency: 'daily',
+      priority: 0.9,
+    }));
 
-    return [...staticRoutes, ...jobRoutes];
+    return [...staticRoutes, ...categoryRoutes, ...jobRoutes];
   } catch (e) {
-    return staticRoutes;
+    return [...staticRoutes, ...categoryRoutes];
   }
 }

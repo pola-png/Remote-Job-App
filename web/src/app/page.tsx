@@ -2,16 +2,20 @@ import Link from 'next/link';
 import { supabase, RemoteJob, mapJobRow } from '@/lib/supabase';
 import { Briefcase, MapPin, Search, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 
-export const revalidate = 60; // Revalidate every 60 seconds
+export const dynamic = 'force-dynamic';
 
-async function getJobs(searchQuery?: string): Promise<RemoteJob[]> {
+async function getJobs(searchQuery?: string, category?: string): Promise<RemoteJob[]> {
   try {
     let query = supabase
       .from('job_postings')
       .select('*')
       .eq('status', 'active')
       .order('posted_timestamp', { ascending: false, nullsFirst: false })
-      .limit(60);
+      .limit(80);
+
+    if (category && category !== 'ALL') {
+      query = query.eq('category', category);
+    }
 
     if (searchQuery && searchQuery.trim().length > 0) {
       query = query.ilike('title', `%${searchQuery.trim()}%`);
@@ -21,11 +25,10 @@ async function getJobs(searchQuery?: string): Promise<RemoteJob[]> {
 
     if (error) {
       console.error('Error fetching jobs:', error);
-      // Fallback: try without status filter if any
       const { data: fallbackData } = await supabase
         .from('job_postings')
         .select('*')
-        .limit(60);
+        .limit(80);
       return (fallbackData || []).map(mapJobRow);
     }
 
@@ -39,10 +42,11 @@ async function getJobs(searchQuery?: string): Promise<RemoteJob[]> {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: { q?: string };
+  searchParams?: { q?: string; category?: string };
 }) {
   const searchQuery = searchParams?.q || '';
-  const jobs = await getJobs(searchQuery);
+  const currentCategory = searchParams?.category || 'ALL';
+  const jobs = await getJobs(searchQuery, currentCategory);
 
   // WebSite Schema for Google Search
   const jsonLd = {
@@ -91,6 +95,39 @@ export default async function HomePage({
               Find Jobs
             </button>
           </form>
+
+          {/* Category Filter Chips for SEO & UX */}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1.25rem' }}>
+            {[
+              { label: '🔥 All Remote', val: 'ALL' },
+              { label: '💻 Software & Tech', val: 'DEVELOPMENT' },
+              { label: '🎨 Design & Creative', val: 'DESIGN' },
+              { label: '📈 Marketing & Growth', val: 'MARKETING' },
+              { label: '💼 Sales & BD', val: 'SALES' },
+              { label: '🎧 Customer Support', val: 'SUPPORT' },
+              { label: '✍️ Content & Writing', val: 'WRITING' },
+              { label: '📊 Data & AI', val: 'DATA' },
+              { label: '💰 Finance & Payroll', val: 'FINANCE' },
+            ].map((cat) => (
+              <Link
+                key={cat.val}
+                href={cat.val === 'ALL' ? '/' : `/?category=${cat.val}`}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  background: currentCategory === cat.val ? '#0284C7' : 'rgba(255, 255, 255, 0.05)',
+                  color: currentCategory === cat.val ? '#ffffff' : 'var(--text-muted)',
+                  border: currentCategory === cat.val ? '1px solid #38BDF8' : '1px solid var(--border-color)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {cat.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

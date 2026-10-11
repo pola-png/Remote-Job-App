@@ -75,22 +75,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = `${job.title} at ${job.company} (100% Remote)`;
-  const description = `Apply for ${job.title} at ${job.company}. ${job.salary ? `Salary: ${job.salary}.` : ''} Remote work opportunity. Learn more and apply now on Remote Jobs HQ.`;
+  const description = `Apply for ${job.title} at ${job.company}. ${job.salary && !job.salary.toLowerCase().includes('competitive') ? `Salary: ${job.salary}.` : ''} Remote work opportunity. Learn more and apply now on Remote Jobs HQ.`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
       type: 'article',
-      url: `https://remotejobshq.online/jobs/${params.slug}`,
+      url: canonicalUrl,
       images: [
         {
           url: job.company_logo || 'https://remotejobshq.online/og-image.png',
           width: 800,
           height: 600,
-          alt: `${job.company} is hiring`,
+          alt: `${job.company} is hiring for ${job.title}`,
         },
       ],
     },
@@ -108,6 +112,9 @@ export default async function JobDetailPage({ params }: Props) {
   if (!job) {
     notFound();
   }
+
+  const applyUrl = job.apply_url || job.direct_apply_url || '#';
+  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
 
   // Google for Jobs Schema.org JobPosting structured JSON-LD
   const jobPostingSchema = {
@@ -133,7 +140,9 @@ export default async function JobDetailPage({ params }: Props) {
       '@type': 'Country',
       name: 'Worldwide',
     },
-    baseSalary: job.salary ? {
+    directApply: true,
+    url: canonicalUrl,
+    baseSalary: job.salary && !job.salary.toLowerCase().includes('competitive') ? {
       '@type': 'MonetaryAmount',
       currency: 'USD',
       value: {
@@ -144,7 +153,32 @@ export default async function JobDetailPage({ params }: Props) {
     } : undefined,
   };
 
-  const applyUrl = job.apply_url || job.direct_apply_url || '#';
+  // Google Breadcrumbs Schema
+  const breadcrumbsSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://remotejobshq.online',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Jobs',
+        item: 'https://remotejobshq.online',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: `${job.title} at ${job.company}`,
+        item: canonicalUrl,
+      },
+    ],
+  };
+
   const requirementsList = Array.isArray(job.requirements)
     ? job.requirements
     : typeof job.requirements === 'string'
@@ -162,6 +196,10 @@ export default async function JobDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsSchema) }}
       />
 
       {/* Back Button */}
