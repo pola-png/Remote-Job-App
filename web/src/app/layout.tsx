@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Link from 'next/link';
+import CookieConsent from './components/CookieConsent';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://remotejobshq.online'),
@@ -88,6 +89,12 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <meta name="monetag" content="3ba7674718137c812899fbff9b92504c" />
+        <script
+          src="https://quge5.com/88/tag.min.js"
+          data-zone="294143"
+          async
+          data-cfasync="false"
+        />
         <meta name="google-site-verification" content="f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc" />
         <link rel="canonical" href="https://remotejobshq.online" />
       </head>
@@ -183,6 +190,8 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+
+        <CookieConsent />
       </body>
     </html>
   );
