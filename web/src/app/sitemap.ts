@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
 import { supabase } from '@/lib/supabase';
 
-export const revalidate = 1800; // Update sitemap every 30 minutes
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 100% Dynamic: Queries live database on every crawler request
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://remotejobshq.online';
