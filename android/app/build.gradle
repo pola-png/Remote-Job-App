@@ -210,6 +210,9 @@ dependencies {
 
     // Firebase Cloud Messaging (FCM) & Google Services
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
+
+    // Google AdMob Pangle Mediation Adapter (AdMob 1st, Pangle fallback)
+    implementation 'com.google.ads.mediation:pangle:6.4.0.6.0'
 }
 
 apply plugin: "com.google.gms.google-services"
