@@ -30,6 +30,26 @@ class InAppUpdateModule(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
+    fun getAppVersionInfo(promise: Promise) {
+        try {
+            val pInfo = reactContext.packageManager.getPackageInfo(reactContext.packageName, 0)
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode
+            }
+            val map = Arguments.createMap()
+            map.putInt("versionCode", versionCode)
+            map.putString("versionName", pInfo.versionName ?: "30.0.14")
+            map.putString("packageName", reactContext.packageName)
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("VERSION_INFO_ERROR", e.localizedMessage, e)
+        }
+    }
+
+    @ReactMethod
     fun checkForPlayStoreUpdate(promise: Promise) {
         val appUpdateInfoTask = appUpdateManager.appUpdateInfo
 
