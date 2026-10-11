@@ -3,7 +3,7 @@ import './globals.css';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://remotejobshq.online'),
+  metadataBase: new URL('https://www.remotejobshq.online'),
   title: {
     default: 'Remote Jobs HQ | Find High-Paying Remote Tech, Design & Marketing Jobs',
     template: '%s | Remote Jobs HQ'
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://remotejobshq.online',
+    url: 'https://www.remotejobshq.online',
     siteName: 'Remote Jobs HQ',
     title: 'Remote Jobs HQ - Find Verified Work From Anywhere Jobs',
     description: 'Explore curated remote tech, engineering, design, and marketing jobs from vetted companies worldwide.',
     images: [
       {
-        url: 'https://remotejobshq.online/og-image.png',
+        url: 'https://www.remotejobshq.online/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Remote Jobs HQ - The #1 Remote Job Platform'
@@ -66,7 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="canonical" href="https://remotejobshq.online" />
+        <link rel="canonical" href="https://www.remotejobshq.online" />
       </head>
       <body>
         <header className="navbar">

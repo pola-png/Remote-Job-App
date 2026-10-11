@@ -7,6 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/', '/admin/'],
     },
-    sitemap: 'https://remotejobshq.online/sitemap.xml',
+    sitemap: 'https://www.remotejobshq.online/sitemap.xml',
+    host: 'https://www.remotejobshq.online',
   };
 }

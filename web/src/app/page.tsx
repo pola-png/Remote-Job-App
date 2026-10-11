@@ -53,10 +53,10 @@ export default async function HomePage({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'Remote Jobs HQ',
-    url: 'https://remotejobshq.online',
+    url: 'https://www.remotejobshq.online',
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://remotejobshq.online/?q={search_term_string}',
+      target: 'https://www.remotejobshq.online/?q={search_term_string}',
       'query-input': 'required name=search_term_string',
     },
   };
