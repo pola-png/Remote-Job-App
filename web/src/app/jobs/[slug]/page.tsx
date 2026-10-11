@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, RemoteJob } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow } from '@/lib/supabase';
 import { MapPin, DollarSign, Clock, Briefcase, ExternalLink, ArrowLeft, ShieldCheck, Share2 } from 'lucide-react';
 
 interface Props {
@@ -12,30 +12,41 @@ export const revalidate = 60; // ISR: 1 minute
 
 async function getJobBySlug(slug: string): Promise<RemoteJob | null> {
   try {
-    // Check if slug starts with uuid or contains id
-    const idMatch = slug.match(/^[0-9a-fA-F-]{36}/) || slug.split('-')[0];
-    
-    let query = supabase.from('remote_jobs').select('*');
-    if (idMatch && idMatch.length > 5) {
-      query = query.or(`id.eq.${idMatch},slug.eq.${slug}`);
-    } else {
-      query = query.eq('slug', slug);
-    }
+    // 1. Direct match by id
+    const { data: directData } = await supabase
+      .from('job_postings')
+      .select('*')
+      .eq('id', slug)
+      .maybeSingle();
 
-    const { data, error } = await query.single();
-    if (error || !data) {
-      // Fallback search by title
-      const titleSearch = slug.replace(/-/g, ' ');
-      const { data: fallbackData } = await supabase
-        .from('remote_jobs')
-        .select('*')
-        .ilike('title', `%${titleSearch}%`)
-        .limit(1)
-        .single();
-      return fallbackData || null;
-    }
-    return data;
+    if (directData) return mapJobRow(directData);
+
+    // 2. Extract potential ID from start of slug (e.g. "jobicy_154667-title" or "uuid-title")
+    const parts = slug.split('-');
+    const potentialId = parts[0];
+
+    const { data: idMatchData } = await supabase
+      .from('job_postings')
+      .select('*')
+      .eq('id', potentialId)
+      .maybeSingle();
+
+    if (idMatchData) return mapJobRow(idMatchData);
+
+    // 3. Match by title slug
+    const titleSearch = slug.replace(/-/g, ' ');
+    const { data: titleMatchData } = await supabase
+      .from('job_postings')
+      .select('*')
+      .ilike('title', `%${titleSearch.slice(0, 30)}%`)
+      .limit(1)
+      .maybeSingle();
+
+    if (titleMatchData) return mapJobRow(titleMatchData);
+
+    return null;
   } catch (err) {
+    console.error('Job detail fetch error:', err);
     return null;
   }
 }
@@ -118,6 +129,19 @@ export default async function JobDetailPage({ params }: Props) {
     } : undefined,
   };
 
+  const applyUrl = job.apply_url || job.direct_apply_url || '#';
+  const requirementsList = Array.isArray(job.requirements)
+    ? job.requirements
+    : typeof job.requirements === 'string'
+    ? [job.requirements]
+    : [];
+
+  const benefitsList = Array.isArray(job.benefits)
+    ? job.benefits
+    : typeof job.benefits === 'string'
+    ? [job.benefits]
+    : [];
+
   return (
     <div className="container" style={{ paddingBottom: '5rem' }}>
       <script
@@ -138,7 +162,7 @@ export default async function JobDetailPage({ params }: Props) {
           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
             <div className="company-logo" style={{ width: '72px', height: '72px', fontSize: '1.75rem' }}>
               {job.company_logo ? (
-                <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               ) : (
                 job.company.charAt(0).toUpperCase()
               )}
@@ -155,7 +179,7 @@ export default async function JobDetailPage({ params }: Props) {
                     <Clock size={16} /> {job.job_type}
                   </span>
                 )}
-                {job.salary && (
+                {job.salary && !job.salary.toLowerCase().includes('competitive') && (
                   <span className="tag salary-tag" style={{ fontSize: '0.9rem', padding: '0.35rem 0.8rem' }}>
                     💰 {job.salary}
                   </span>
@@ -166,7 +190,7 @@ export default async function JobDetailPage({ params }: Props) {
 
           <div>
             <a
-              href={job.apply_url || '#'}
+              href={applyUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary"
@@ -188,21 +212,36 @@ export default async function JobDetailPage({ params }: Props) {
             {job.description}
           </div>
 
-          {job.requirements && (
+          {requirementsList.length > 0 && (
             <div style={{ marginTop: '2.5rem' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
                 Requirements & Qualifications
               </h2>
-              <div style={{ color: 'var(--text-main)', lineHeight: '1.8', whiteSpace: 'pre-line', fontSize: '1.05rem' }}>
-                {job.requirements}
-              </div>
+              <ul style={{ paddingLeft: '1.5rem', color: 'var(--text-main)', lineHeight: '1.8' }}>
+                {requirementsList.map((req, idx) => (
+                  <li key={idx} style={{ marginBottom: '0.5rem' }}>{req}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {benefitsList.length > 0 && (
+            <div style={{ marginTop: '2.5rem' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                Perks & Benefits
+              </h2>
+              <ul style={{ paddingLeft: '1.5rem', color: 'var(--text-main)', lineHeight: '1.8' }}>
+                {benefitsList.map((benefit, idx) => (
+                  <li key={idx} style={{ marginBottom: '0.5rem' }}>{benefit}</li>
+                ))}
+              </ul>
             </div>
           )}
 
           <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
             <h3 style={{ marginBottom: '1rem' }}>Ready to apply?</h3>
             <a
-              href={job.apply_url || '#'}
+              href={applyUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary"

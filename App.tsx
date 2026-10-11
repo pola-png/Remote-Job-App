@@ -10,6 +10,7 @@ import {
   BackHandler,
   Platform,
   DeviceEventEmitter,
+  AppState,
 } from 'react-native';
 import {
   Briefcase,
@@ -158,18 +159,31 @@ export default function App() {
       }
     });
 
-    // Initialize Google Mobile Ads SDK on startup & preload rewarded ads
+    // Initialize Google Mobile Ads SDK on startup & preload ads
     mobileAds()
       .initialize()
       .then((adapterStatuses) => {
         console.log('Google Mobile Ads Initialized Successfully:', adapterStatuses);
-        // Preload rewarded video ad in background for instant playback
         const { AdMobService } = require('./src/services/admob');
+        // Preload ads in background for instant playback
         AdMobService.preloadRewardedAd();
+        AdMobService.preloadAppOpenAd();
+        // Show App Open Ad on cold startup
+        setTimeout(() => {
+          AdMobService.showAppOpenAd();
+        }, 1200);
       })
       .catch((err) => {
         console.warn('Google Mobile Ads Init Warning:', err);
       });
+
+    // Listen for app coming to foreground / resume to display App Open Ad
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        const { AdMobService } = require('./src/services/admob');
+        AdMobService.showAppOpenAd();
+      }
+    });
 
     // Request Real Native Phone Notification Permission & Subscribe to FCM Topics
     NotificationService.requestNativeDevicePermission().then(() => {
@@ -208,6 +222,7 @@ export default function App() {
     return () => {
       subscription.unsubscribe();
       pushSubscription.remove();
+      appStateSubscription.remove();
     };
   }, []);
 

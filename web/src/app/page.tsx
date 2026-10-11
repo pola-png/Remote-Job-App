@@ -1,32 +1,48 @@
 import Link from 'next/link';
-import { supabase, RemoteJob } from '@/lib/supabase';
-import { Briefcase, MapPin, DollarSign, Clock, Search, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { supabase, RemoteJob, mapJobRow } from '@/lib/supabase';
+import { Briefcase, MapPin, Search, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 
-export const revalidate = 60; // ISR: Revalidate every 60 seconds
+export const revalidate = 60; // Revalidate every 60 seconds
 
-async function getJobs(): Promise<RemoteJob[]> {
+async function getJobs(searchQuery?: string): Promise<RemoteJob[]> {
   try {
-    const { data, error } = await supabase
-      .from('remote_jobs')
+    let query = supabase
+      .from('job_postings')
       .select('*')
-      .eq('is_active', true)
-      .order('is_featured', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .eq('status', 'active')
+      .order('posted_timestamp', { ascending: false, nullsFirst: false })
+      .limit(60);
+
+    if (searchQuery && searchQuery.trim().length > 0) {
+      query = query.ilike('title', `%${searchQuery.trim()}%`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching jobs:', error);
-      return [];
+      // Fallback: try without status filter if any
+      const { data: fallbackData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .limit(60);
+      return (fallbackData || []).map(mapJobRow);
     }
-    return data || [];
+
+    return (data || []).map(mapJobRow);
   } catch (err) {
     console.error('Supabase query error:', err);
     return [];
   }
 }
 
-export default async function HomePage() {
-  const jobs = await getJobs();
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: { q?: string };
+}) {
+  const searchQuery = searchParams?.q || '';
+  const jobs = await getJobs(searchQuery);
 
   // WebSite Schema for Google Search
   const jsonLd = {
@@ -51,7 +67,7 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="hero">
         <div className="hero-badge">
-          <Zap size={14} /> 10,000+ Verified Remote Opportunities
+          <Zap size={14} /> 1,200+ Live Verified Remote Opportunities
         </div>
         <h1 className="hero-title">
           Land Your Dream <span>Remote Job</span> Anywhere In The World
@@ -67,6 +83,7 @@ export default async function HomePage() {
             <input
               type="text"
               name="q"
+              defaultValue={searchQuery}
               placeholder="Search by job title, skill (e.g. React, Python), or company..."
               className="search-input"
             />
@@ -100,30 +117,39 @@ export default async function HomePage() {
 
       {/* Job Feed List */}
       <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>🔥 Featured & Latest Remote Positions</h2>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+              {searchQuery ? `🔍 Results for "${searchQuery}"` : '🔥 Featured & Latest Remote Positions'}
+            </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Updated live from vetted remote employers</p>
           </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Showing {jobs.length} jobs</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Showing {jobs.length} remote positions</span>
         </div>
 
         <div className="jobs-grid">
           {jobs.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', background: 'var(--bg-card)', borderRadius: '1rem' }}>
               <Briefcase size={48} color="var(--text-subtle)" style={{ marginBottom: '1rem' }} />
-              <h3>Connecting to Live Jobs Feed...</h3>
-              <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>New remote opportunities will appear here momentarily.</p>
+              <h3>No jobs found matching your criteria</h3>
+              <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                Try searching for something else or browse all positions.
+              </p>
+              <Link href="/" className="btn-secondary" style={{ marginTop: '1.5rem' }}>
+                View All Jobs
+              </Link>
             </div>
           ) : (
             jobs.map((job) => {
-              const jobSlug = job.slug || `${job.id}-${job.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+              const jobSlug = job.slug || `${job.id}`;
+              const salaryDisplay = job.salary && !job.salary.toLowerCase().includes('competitive') ? job.salary : null;
+
               return (
                 <Link key={job.id} href={`/jobs/${jobSlug}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
                   <div className="job-info-left">
                     <div className="company-logo">
                       {job.company_logo ? (
-                        <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : (
                         job.company.charAt(0).toUpperCase()
                       )}
@@ -144,19 +170,19 @@ export default async function HomePage() {
                         </span>
                         {job.job_type && (
                           <span className="job-meta-item">
-                            <Clock size={14} /> {job.job_type}
+                            <Briefcase size={14} /> {job.job_type}
                           </span>
                         )}
-                        {job.salary && (
+                        {salaryDisplay && (
                           <span className="tag salary-tag">
-                            💰 {job.salary}
+                            💰 {salaryDisplay}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                     <div className="tags-row">
                       {job.tags && job.tags.slice(0, 3).map((tag, idx) => (
                         <span key={idx} className="tag">{tag}</span>

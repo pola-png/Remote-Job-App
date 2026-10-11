@@ -36,14 +36,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const { data: jobs } = await supabase
-      .from('remote_jobs')
-      .select('id, title, slug, created_at')
-      .eq('is_active', true)
+      .from('job_postings')
+      .select('id, title, created_at')
+      .eq('status', 'active')
       .order('created_at', { ascending: false })
-      .limit(2000);
+      .limit(1000);
 
     const jobRoutes: MetadataRoute.Sitemap = (jobs || []).map((job) => {
-      const slug = job.slug || `${job.id}-${job.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      const slug = job.id;
       return {
         url: `${baseUrl}/jobs/${slug}`,
         lastModified: new Date(job.created_at || Date.now()),

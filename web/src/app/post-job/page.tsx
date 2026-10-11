@@ -32,21 +32,24 @@ export default function PostJobPage() {
     try {
       const slug = `${formData.company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`;
 
-      const { data, error } = await supabase.from('remote_jobs').insert([
+      const jobId = `direct_${Date.now()}`;
+      const { data, error } = await supabase.from('job_postings').insert([
         {
+          id: jobId,
           title: formData.title,
           company: formData.company,
           company_logo: formData.company_logo || null,
           location: formData.location,
           job_type: formData.job_type,
           category: formData.category,
-          salary: formData.salary,
-          apply_url: formData.apply_url,
+          salary_range: formData.salary,
+          direct_apply_url: formData.apply_url,
           description: formData.description,
-          requirements: formData.requirements,
-          slug: slug,
-          is_active: true,
-          is_featured: true,
+          requirements: formData.requirements ? [formData.requirements] : [],
+          status: 'active',
+          source: 'Direct',
+          is_verified_employer: true,
+          posted_timestamp: Date.now(),
         },
       ]);
 

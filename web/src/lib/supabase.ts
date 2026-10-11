@@ -12,15 +12,20 @@ export interface RemoteJob {
   company_logo?: string;
   location: string;
   salary?: string;
+  salary_range?: string;
   job_type?: string;
   category?: string;
   tags?: string[];
   description: string;
-  requirements?: string;
+  requirements?: string[] | string;
+  benefits?: string[] | string;
   apply_url?: string;
+  direct_apply_url?: string;
   is_featured?: boolean;
-  is_active?: boolean;
+  is_verified_employer?: boolean;
+  status?: string;
   created_at: string;
+  posted_timestamp?: number;
   slug?: string;
 }
 
@@ -32,4 +37,30 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
     .replace(/[^\w\-]+/g, '')
     .replace(/\-\-+/g, '-');
+}
+
+export function mapJobRow(row: any): RemoteJob {
+  return {
+    id: row.id,
+    title: row.title || 'Remote Position',
+    company: row.company || 'Hiring Company',
+    company_logo: row.company_logo || undefined,
+    location: row.location || '100% Remote / Worldwide',
+    salary: row.salary_range || row.salary || undefined,
+    salary_range: row.salary_range || row.salary || undefined,
+    job_type: row.job_type || 'Full-time',
+    category: row.category || 'Engineering',
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    description: row.description || '',
+    requirements: row.requirements || undefined,
+    benefits: row.benefits || undefined,
+    apply_url: row.direct_apply_url || row.apply_url || undefined,
+    direct_apply_url: row.direct_apply_url || row.apply_url || undefined,
+    is_featured: row.is_featured || row.is_verified_employer || false,
+    is_verified_employer: row.is_verified_employer ?? true,
+    status: row.status || 'active',
+    created_at: row.created_at || new Date().toISOString(),
+    posted_timestamp: row.posted_timestamp || undefined,
+    slug: row.slug || `${row.id}-${slugify(row.title || 'job')}`,
+  };
 }
