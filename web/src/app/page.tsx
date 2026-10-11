@@ -77,7 +77,7 @@ export default async function HomePage({
           Land Your Dream <span>Remote Job</span> Anywhere In The World
         </h1>
         <p className="hero-subtitle">
-          Hand-curated, high-paying remote roles in engineering, product, design, marketing, and sales from top global startups & Fortune 500s.
+          Land your dream remote job anywhere in the world. Browse 10,000+ verified high-paying remote roles in engineering, product, design, marketing, and sales from top global startups & Fortune 500s.
         </p>
 
         {/* Quick Search */}
@@ -96,31 +96,31 @@ export default async function HomePage({
             </button>
           </form>
 
-          {/* Category Filter Chips for SEO & UX */}
+          {/* Category Filter Chips for SEO & UX - Clean Static URLs */}
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1.25rem' }}>
             {[
-              { label: '🔥 All Remote', val: 'ALL' },
-              { label: '💻 Software & Tech', val: 'DEVELOPMENT' },
-              { label: '🎨 Design & Creative', val: 'DESIGN' },
-              { label: '📈 Marketing & Growth', val: 'MARKETING' },
-              { label: '💼 Sales & BD', val: 'SALES' },
-              { label: '🎧 Customer Support', val: 'SUPPORT' },
-              { label: '✍️ Content & Writing', val: 'WRITING' },
-              { label: '📊 Data & AI', val: 'DATA' },
-              { label: '💰 Finance & Payroll', val: 'FINANCE' },
+              { label: '🔥 All Remote', href: '/' },
+              { label: '💻 Software & Tech', href: '/category/development' },
+              { label: '🎨 Design & Creative', href: '/category/design' },
+              { label: '📈 Marketing & Growth', href: '/category/marketing' },
+              { label: '💼 Sales & BD', href: '/category/sales' },
+              { label: '🎧 Customer Support', href: '/category/support' },
+              { label: '✍️ Content & Writing', href: '/category/writing' },
+              { label: '📊 Data & AI', href: '/category/data' },
+              { label: '💰 Finance & Payroll', href: '/category/finance' },
             ].map((cat) => (
               <Link
-                key={cat.val}
-                href={cat.val === 'ALL' ? '/' : `/?category=${cat.val}`}
+                key={cat.href}
+                href={cat.href}
                 style={{
                   padding: '0.4rem 0.85rem',
                   borderRadius: '9999px',
                   fontSize: '0.85rem',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  background: currentCategory === cat.val ? '#0284C7' : 'rgba(255, 255, 255, 0.05)',
-                  color: currentCategory === cat.val ? '#ffffff' : 'var(--text-muted)',
-                  border: currentCategory === cat.val ? '1px solid #38BDF8' : '1px solid var(--border-color)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-color)',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -199,7 +199,7 @@ export default async function HomePage({
                           </span>
                         )}
                       </div>
-                      <h3 className="job-title">{job.title}</h3>
+                      <div className="job-title">{job.title}</div>
                       <div className="job-meta">
                         <span className="job-meta-item">
                           <MapPin size={14} color="#38BDF8" /> {job.location || 'Worldwide (100% Remote)'}

@@ -5,10 +5,10 @@ import Link from 'next/link';
 export const metadata: Metadata = {
   metadataBase: new URL('https://remotejobshq.online'),
   title: {
-    default: 'Remote Jobs HQ | Find High-Paying Remote Tech, Design & Marketing Jobs',
+    default: 'Remote Jobs HQ | High-Paying Tech & Remote Jobs',
     template: '%s | Remote Jobs HQ'
   },
-  description: 'Discover 10,000+ verified remote jobs in Software Engineering, Product, Design, AI, Marketing and Customer Support. Work from anywhere with top global companies.',
+  description: 'Discover 10,000+ verified remote jobs in tech, design, AI, and marketing. Work from anywhere with top global companies hiring remote talent.',
   keywords: [
     'remote jobs',
     'work from home',
@@ -23,12 +23,17 @@ export const metadata: Metadata = {
   authors: [{ name: 'Remote Jobs HQ Team' }],
   creator: 'Remote Jobs HQ',
   publisher: 'Remote Jobs HQ',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.png',
+    apple: '/apple-touch-icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://remotejobshq.online',
     siteName: 'Remote Jobs HQ',
-    title: 'Remote Jobs HQ - Find Verified Work From Anywhere Jobs',
+    title: 'Remote Jobs HQ - Verified Work From Anywhere Jobs',
     description: 'Explore curated remote tech, engineering, design, and marketing jobs from vetted companies worldwide.',
     images: [
       {
@@ -72,6 +77,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <meta name="monetag" content="3ba7674718137c812899fbff9b92504c" />
         <meta name="google-site-verification" content="f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc" />
         <link rel="canonical" href="https://remotejobshq.online" />

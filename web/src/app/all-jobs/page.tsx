@@ -77,7 +77,7 @@ export default async function AllJobsDirectoryPage({
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>{job.company}</span>
-                <h3 className="job-title">{job.title}</h3>
+                <div className="job-title">{job.title}</div>
                 <div className="job-meta">
                   <span className="job-meta-item">
                     <MapPin size={14} color="#38BDF8" /> {job.location || 'Worldwide (100% Remote)'}
