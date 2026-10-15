@@ -181,7 +181,7 @@ export default async function HomePage({
               const salaryDisplay = job.salary && !job.salary.toLowerCase().includes('competitive') ? job.salary : null;
 
               return (
-                <Link key={job.id} href={`/jobs/${encodeURIComponent(job.id)}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
+                <Link key={job.id} href={`/jobs/${job.slug || encodeURIComponent(job.id)}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
                   <div className="job-info-left">
                     <div className="company-logo">
                       {job.company_logo ? (

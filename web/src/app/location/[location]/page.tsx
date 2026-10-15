@@ -63,7 +63,7 @@ export default async function LocationPage({ params }: Props) {
       '@type': 'ListItem',
       position: idx + 1,
       name: `${job.title} at ${job.company}`,
-      url: `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`,
+      url: `https://remotejobshq.online/jobs/${job.slug || encodeURIComponent(job.id)}`,
     })),
   };
 
@@ -134,7 +134,7 @@ export default async function LocationPage({ params }: Props) {
           </div>
         ) : (
           jobs.map((job) => (
-            <Link key={job.id} href={`/jobs/${encodeURIComponent(job.id)}`} className="job-card">
+            <Link key={job.id} href={`/jobs/${job.slug || encodeURIComponent(job.id)}`} className="job-card">
               <div className="job-info-left">
                 <div className="company-logo">
                   {job.company_logo ? (

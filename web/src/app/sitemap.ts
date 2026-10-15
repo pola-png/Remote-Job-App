@@ -1,11 +1,12 @@
 import { MetadataRoute } from 'next';
-import { supabase } from '@/lib/supabase';
+import { supabase, slugify } from '@/lib/supabase';
 
 // Force dynamic ISR execution - regenerates every hour in background and serves instantly from Edge CDN
 export const revalidate = 3600;
 
 interface DynamicJobRecord {
   id: string;
+  title?: string | null;
   category?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
@@ -24,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     while (true) {
       const { data, error } = await supabase
         .from('job_postings')
-        .select('id, category, updated_at, created_at, posted_timestamp')
+        .select('id, title, category, updated_at, created_at, posted_timestamp')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .range(from, from + pageSize - 1);
@@ -43,8 +44,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ? new Date(allJobs[0].updated_at || allJobs[0].created_at!)
     : new Date();
 
-  // 3. Dynamic Job Posting Routes
-  const jobRoutes: MetadataRoute.Sitemap = allJobs.map((job) => {
+  // 3. Dynamic Job Posting Routes (Clean Title Slugs for Google SEO)
+  const seenSlugs = new Set<string>();
+  const jobRoutes: MetadataRoute.Sitemap = [];
+
+  for (const job of allJobs) {
     let date = new Date();
     if (job.updated_at) {
       date = new Date(job.updated_at);
@@ -54,13 +58,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       date = new Date(Number(job.posted_timestamp));
     }
 
-    return {
-      url: `${baseUrl}/jobs/${encodeURIComponent(job.id)}`,
+    let slug = slugify(job.title || '');
+    if (!slug || slug === 'job') {
+      slug = `job-${job.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}`;
+    }
+
+    // Disambiguate if exact duplicate title occurs so all jobs have distinct sitemap URLs
+    if (seenSlugs.has(slug)) {
+      const cleanId = job.id.replace(/^jobicy_/, '').replace(/^himalayas_/, '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+      slug = `${slug}-${cleanId}`;
+    }
+    seenSlugs.add(slug);
+
+    jobRoutes.push({
+      url: `${baseUrl}/jobs/${slug}`,
       lastModified: date,
       changeFrequency: 'daily',
       priority: 1.0,
-    };
-  });
+    });
+  }
 
   // 4. Dedicated Programmatic Category Hubs (Clean URLs)
   const categorySlugs = [
@@ -84,38 +100,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 5. High-Demand Role & Skill Programmatic Landing Pages (Ultra SEO)
   const roleSlugs = [
+    'software-engineer',
+    'product-manager',
+    'project-manager',
+    'account-executive',
+    'customer-support',
+    'customer-success',
+    'customer-service',
+    'sales-development',
+    'sales-manager',
+    'marketing-manager',
+    'operations-manager',
+    'frontend',
+    'backend',
+    'fullstack',
+    'devops',
+    'data-analyst',
+    'data-engineer',
+    'machine-learning',
+    'ai',
+    'cybersecurity',
+    'security',
+    'product-designer',
+    'ui-ux',
+    'graphic-designer',
+    'video-editor',
+    'virtual-assistant',
+    'executive-assistant',
+    'accountant',
+    'bookkeeper',
+    'financial-analyst',
+    'recruiter',
+    'copywriter',
+    'content-writer',
+    'seo',
+    'qa-engineer',
+    'mobile-developer',
     'react',
     'python',
     'javascript',
     'typescript',
     'nodejs',
-    'frontend',
-    'backend',
-    'fullstack',
-    'devops',
     'aws',
-    'product-manager',
-    'ui-ux',
-    'copywriter',
-    'content-writer',
-    'seo',
-    'data-analyst',
-    'data-engineer',
-    'machine-learning',
-    'ai',
-    'customer-service',
-    'customer-support',
-    'account-executive',
-    'sales-development',
-    'recruiter',
-    'financial-analyst',
-    'bookkeeper',
-    'virtual-assistant',
-    'qa-engineer',
-    'mobile-developer',
     'flutter',
     'solidity',
-    'cybersecurity',
   ];
 
   const roleRoutes: MetadataRoute.Sitemap = roleSlugs.map((slug) => ({
@@ -147,7 +175,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   }));
 
-  // 7. Crawlable Directory Pages for Complete Job Spidering
+  // 7. Crawlable Directory Pages for Complete Job Spidering (Only Canonical Root)
   const directoryRoutes: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/all-jobs`,
@@ -155,12 +183,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'always' as const,
       priority: 1.0,
     },
-    ...Array.from({ length: 15 }, (_, i) => ({
-      url: `${baseUrl}/all-jobs?page=${i + 1}`,
-      lastModified: latestJobTimestamp,
-      changeFrequency: 'daily' as const,
-      priority: 1.0,
-    })),
   ];
 
   // 8. Main Site Core Routes (100% Priority for all pages)

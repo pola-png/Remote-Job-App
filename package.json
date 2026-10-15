@@ -7,7 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "sync:jobs": "node backend/job-sync-pipeline.js"
+    "sync:jobs": "node backend/job-sync-pipeline.js",
+    "build:android:bundle": "python scripts/build_release_16kb.py",
+    "patch:16kb": "python scripts/patch_and_resign_aab.py"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",

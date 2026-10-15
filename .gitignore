@@ -111,8 +111,10 @@ Thumbs.db
 # Environment variables (all variants)
 .env.production
 
-# Android signing keys
+# Android signing keys and release bundles
 *.jks
 *.keystore
+*.aab
+*.apk
 android/key.properties
 key.properties

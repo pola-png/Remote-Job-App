@@ -216,3 +216,22 @@ dependencies {
 }
 
 apply plugin: "com.google.gms.google-services"
+
+// Automatic 16 KB Memory Page Size Support hook for Google Play Store (Android 15+)
+tasks.whenTaskAdded { task ->
+    if (task.name == 'bundleRelease' || task.name == 'packageReleaseBundle') {
+        task.doLast {
+            def aabFile = file("${buildDir}/outputs/bundle/release/app-release.aab")
+            if (aabFile.exists()) {
+                println "[16KB] Triggering automatic 16 KB page size alignment and re-signing on ${aabFile.name}..."
+                def pythonCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'python' : 'python3'
+                def scriptFile = file("${rootDir}/../scripts/patch_and_resign_aab.py")
+                if (scriptFile.exists()) {
+                    exec {
+                        commandLine pythonCmd, scriptFile.absolutePath, aabFile.absolutePath
+                    }
+                }
+            }
+        }
+    }
+}

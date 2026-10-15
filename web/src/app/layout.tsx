@@ -146,14 +146,14 @@ export default function RootLayout({
               <div>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Trending Roles</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
-                  <Link href="/role/react" className="nav-link">React Developer</Link>
-                  <Link href="/role/python" className="nav-link">Python Engineer</Link>
-                  <Link href="/role/fullstack" className="nav-link">Full Stack Engineer</Link>
-                  <Link href="/role/devops" className="nav-link">DevOps Engineer</Link>
+                  <Link href="/role/software-engineer" className="nav-link">Software Engineer</Link>
                   <Link href="/role/product-manager" className="nav-link">Product Manager</Link>
-                  <Link href="/role/ui-ux" className="nav-link">UI/UX Designer</Link>
-                  <Link href="/role/copywriter" className="nav-link">Copywriter</Link>
+                  <Link href="/role/virtual-assistant" className="nav-link">Virtual Assistant</Link>
+                  <Link href="/role/customer-support" className="nav-link">Customer Support</Link>
+                  <Link href="/role/account-executive" className="nav-link">Account Executive</Link>
                   <Link href="/role/data-analyst" className="nav-link">Data Analyst</Link>
+                  <Link href="/role/product-designer" className="nav-link">Product Designer</Link>
+                  <Link href="/role/executive-assistant" className="nav-link">Executive Assistant</Link>
                 </div>
               </div>
 

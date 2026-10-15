@@ -66,7 +66,7 @@ export default async function AllJobsDirectoryPage({
 
       <div className="jobs-grid">
         {jobs.map((job) => (
-          <Link key={job.id} href={`/jobs/${encodeURIComponent(job.id)}`} className="job-card">
+          <Link key={job.id} href={`/jobs/${job.slug || encodeURIComponent(job.id)}`} className="job-card">
             <div className="job-info-left">
               <div className="company-logo">
                 {job.company_logo ? (

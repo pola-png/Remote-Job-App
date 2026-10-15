@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect, RedirectType } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, slugify } from '@/lib/supabase';
 import { MapPin, DollarSign, Clock, Briefcase, ExternalLink, ArrowLeft, ShieldCheck, Share2 } from 'lucide-react';
 
 interface Props {
@@ -15,7 +15,7 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
   try {
     const slug = decodeURIComponent(rawSlug).trim();
 
-    // 1. Direct match by exact id (e.g. "jobicy_154667" or UUID)
+    // 1. Direct match by exact ID (e.g. legacy "jobicy_154667", himalayas URL ID, or UUID)
     const { data: directData } = await supabase
       .from('job_postings')
       .select('*')
@@ -24,20 +24,31 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
 
     if (directData) return mapJobRow(directData);
 
-    // 2. Extract potential ID prefix if slug has format "jobicy_154667-title..."
-    const match = slug.match(/^([a-zA-Z0-9_]+)-/);
-    if (match && match[1]) {
+    // 2. Extract potential ID prefix or suffix if slug format is "jobicy_154667-title" or "title-jobicy_154667"
+    const prefixMatch = slug.match(/^([a-zA-Z0-9_]+)-/);
+    if (prefixMatch && prefixMatch[1]) {
       const { data: prefixData } = await supabase
         .from('job_postings')
         .select('*')
-        .eq('id', match[1])
+        .eq('id', prefixMatch[1])
         .maybeSingle();
 
       if (prefixData) return mapJobRow(prefixData);
     }
 
-    // 3. Extract standard UUID prefix if present
-    const uuidMatch = slug.match(/^[0-9a-fA-F-]{36}/);
+    const suffixMatch = slug.match(/-(jobicy_\d+|[0-9a-fA-F-]{36})$/);
+    if (suffixMatch && suffixMatch[1]) {
+      const { data: suffixData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('id', suffixMatch[1])
+        .maybeSingle();
+
+      if (suffixData) return mapJobRow(suffixData);
+    }
+
+    // 3. Extract standard UUID if present
+    const uuidMatch = slug.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
     if (uuidMatch) {
       const { data: uuidData } = await supabase
         .from('job_postings')
@@ -48,16 +59,37 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
       if (uuidData) return mapJobRow(uuidData);
     }
 
-    // 4. Fallback search by title
-    const titleSearch = slug.replace(/[-_]/g, ' ').replace(/^jobicy\s+\d+\s+/i, '');
-    const { data: titleMatchData } = await supabase
-      .from('job_postings')
-      .select('*')
-      .ilike('title', `%${titleSearch.slice(0, 25)}%`)
-      .limit(1)
-      .maybeSingle();
+    // 4. Search by Title Words (matching clean title slug)
+    const words = slug.split('-').filter((w) => w.length >= 2);
+    if (words.length > 0) {
+      const pattern = '%' + words.slice(0, 5).join('%') + '%';
+      const { data: candidates } = await supabase
+        .from('job_postings')
+        .select('*')
+        .ilike('title', pattern)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-    if (titleMatchData) return mapJobRow(titleMatchData);
+      if (candidates && candidates.length > 0) {
+        const exact = candidates.find((c) => slugify(c.title) === slug);
+        if (exact) return mapJobRow(exact);
+        return mapJobRow(candidates[0]);
+      }
+    }
+
+    // 5. Broader Fallback
+    const firstTwo = words.slice(0, 2).join('%');
+    if (firstTwo) {
+      const { data: fallback } = await supabase
+        .from('job_postings')
+        .select('*')
+        .ilike('title', `%${firstTwo}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fallback) return mapJobRow(fallback);
+    }
 
     return null;
   } catch (err) {
@@ -76,7 +108,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = `${job.title} at ${job.company} (100% Remote)`;
   const description = `Apply for ${job.title} at ${job.company}. ${job.salary && !job.salary.toLowerCase().includes('competitive') ? `Salary: ${job.salary}.` : ''} Remote work opportunity. Learn more and apply now on Remote Jobs HQ.`;
-  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${slugify(job.title)}`;
 
   return {
     title,
@@ -114,8 +146,15 @@ export default async function JobDetailPage({ params }: Props) {
     return null;
   }
 
+  // 301 Permanent Redirect legacy raw ID URLs to the clean SEO title URL
+  const targetSlug = slugify(job.title);
+  const rawSlug = decodeURIComponent(params.slug).trim();
+  if (rawSlug === job.id && targetSlug && targetSlug !== rawSlug) {
+    redirect(`/jobs/${targetSlug}`, RedirectType.replace);
+  }
+
   const applyUrl = job.apply_url || job.direct_apply_url || '#';
-  const canonicalUrl = `https://remotejobshq.online/jobs/${encodeURIComponent(job.id)}`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${targetSlug}`;
 
   // Google for Jobs Schema.org JobPosting structured JSON-LD
   const jobPostingSchema = {

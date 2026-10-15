@@ -30,19 +30,35 @@ export interface RemoteJob {
 }
 
 export function slugify(text: string): string {
+  if (!text) return 'job';
   return text
     .toString()
     .toLowerCase()
     .trim()
+    .replace(/[\/\\]+/g, '-')
+    .replace(/[^\w\s\-]+/g, '')
     .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-');
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'job';
+}
+
+export function getJobSlug(job: { title?: string; id?: string; slug?: string }): string {
+  if (job.slug) return job.slug;
+  if (job.title) {
+    const s = slugify(job.title);
+    if (s && s !== 'job') return s;
+  }
+  if (job.id) {
+    return slugify(job.id);
+  }
+  return 'remote-job';
 }
 
 export function mapJobRow(row: any): RemoteJob {
+  const title = row.title || 'Remote Position';
   return {
     id: row.id,
-    title: row.title || 'Remote Position',
+    title,
     company: row.company || 'Hiring Company',
     company_logo: row.company_logo || undefined,
     location: row.location || '100% Remote / Worldwide',
@@ -61,6 +77,6 @@ export function mapJobRow(row: any): RemoteJob {
     status: row.status || 'active',
     created_at: row.created_at || new Date().toISOString(),
     posted_timestamp: row.posted_timestamp || undefined,
-    slug: row.slug || `${row.id}-${slugify(row.title || 'job')}`,
+    slug: row.slug || slugify(title),
   };
 }
