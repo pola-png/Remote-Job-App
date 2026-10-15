@@ -20,13 +20,19 @@ def main():
     gradle_cmd = r".\gradlew.bat bundleRelease --no-daemon" if os.name == 'nt' else "./gradlew bundleRelease --no-daemon"
     run_cmd(gradle_cmd, cwd=android_dir)
 
-    # 2. Patch 16KB ELF alignment and re-sign with upload keystore
-    python_cmd = sys.executable or "python"
-    run_cmd(f'"{python_cmd}" "{patch_script}" "{aab_path}"', cwd=root_dir)
+    # 2. Copy to root app-release.aab
+    root_aab = os.path.join(root_dir, "app-release.aab")
+    try:
+        import shutil
+        shutil.copyfile(aab_path, root_aab)
+        print(f"Copied AAB to root: {root_aab}")
+    except Exception as e:
+        print(f"Warning: could not copy to root: {e}")
 
     print(f"\n==========================================")
-    print(f"SUCCESS: 16 KB compliant AAB generated at:")
+    print(f"SUCCESS: Release AAB (versionCode 61) generated at:")
     print(f"{aab_path}")
+    print(f"Root path: {root_aab}")
     print(f"==========================================\n")
 
 if __name__ == "__main__":

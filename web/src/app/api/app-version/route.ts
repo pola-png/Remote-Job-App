@@ -8,9 +8,9 @@ export async function GET() {
     {
       platform: 'android',
       packageName: 'com.xapzap.app',
-      latestVersionCode: 59,
-      latestVersionName: '30.0.14',
-      minRequiredVersionCode: 58,
+      latestVersionCode: 61,
+      latestVersionName: '30.0.16',
+      minRequiredVersionCode: 60,
       forceUpdate: false,
       releaseNotes: 'Performance improvements, ultra-fast job search, and full support for latest Android 16 & 16 KB memory page size.',
       playStoreUrl: 'https://play.google.com/store/apps/details?id=com.xapzap.app',
