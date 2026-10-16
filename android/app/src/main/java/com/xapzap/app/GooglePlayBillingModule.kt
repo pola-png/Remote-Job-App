@@ -194,7 +194,7 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
                     } else {
                         currentPurchasePromise?.reject(
                             "PRODUCT_NOT_FOUND",
-                            "Subscription '$productId' is still propagating on Google Play. Please try again in a few moments."
+                            "Payment service is currently unavailable. Please check your Google Play account or try again shortly."
                         )
                         currentPurchasePromise = null
                     }
@@ -246,7 +246,8 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
             currentPurchasePromise?.reject("USER_CANCELED", "Purchase was canceled by the user.")
             currentPurchasePromise = null
         } else {
-            currentPurchasePromise?.reject("PURCHASE_FAILED", "Purchase error: ${billingResult.debugMessage} (code ${billingResult.responseCode})")
+            val msg = if (billingResult.debugMessage.isNullOrBlank()) "Payment could not be completed. Please try again." else billingResult.debugMessage
+            currentPurchasePromise?.reject("PURCHASE_FAILED", msg)
             currentPurchasePromise = null
         }
     }

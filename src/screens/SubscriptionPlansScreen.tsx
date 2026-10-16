@@ -130,7 +130,7 @@ export const SubscriptionPlansScreen: React.FC<Props> = ({
             activeOpacity={0.8}
           >
             <Text style={[styles.cycleBtnText, cycle === 'monthly' && styles.cycleBtnTextActive]}>
-              Monthly Billing
+              Monthly Plan
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -139,7 +139,7 @@ export const SubscriptionPlansScreen: React.FC<Props> = ({
             activeOpacity={0.8}
           >
             <Text style={[styles.cycleBtnText, cycle === 'yearly' && styles.cycleBtnTextActive]}>
-              Annual (Save 33%)
+              Yearly Plan (Save 33%)
             </Text>
           </TouchableOpacity>
         </View>

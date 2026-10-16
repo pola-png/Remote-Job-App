@@ -118,7 +118,7 @@ export const SubscriptionPlansModal: React.FC<Props> = ({
               onPress={() => setCycle('monthly')}
             >
               <Text style={[styles.cycleBtnText, cycle === 'monthly' && styles.cycleBtnTextActive]}>
-                Monthly Billing
+                Monthly Plan
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -126,7 +126,7 @@ export const SubscriptionPlansModal: React.FC<Props> = ({
               onPress={() => setCycle('yearly')}
             >
               <Text style={[styles.cycleBtnText, cycle === 'yearly' && styles.cycleBtnTextActive]}>
-                Annual (Save 33%)
+                Yearly Plan (Save 33%)
               </Text>
             </TouchableOpacity>
           </View>

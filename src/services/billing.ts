@@ -71,7 +71,7 @@ export const BillingService = {
       try {
         const purchase = await GooglePlayBillingModule.purchaseSubscription(sku);
         if (purchase && purchase.purchaseToken) {
-          // Upgrade user in Supabase & local state
+          // Upgrade user in Supabase & local state only with verified Google Play purchase
           const upgradeRes = await SubscriptionService.upgradeSubscription(userId, tier, cycle);
           return {
             success: true,
@@ -81,29 +81,29 @@ export const BillingService = {
             tier: tier,
           };
         }
+        return {
+          success: false,
+          message: 'Payment verification failed. Please try again.',
+        };
       } catch (err: any) {
         // If user canceled
         if (err.message && err.message.includes('canceled')) {
           return { success: false, message: 'Purchase was canceled.' };
         }
 
-        // If in development or propagating on Play Store, activate gracefully
-        console.warn('[BillingService] Native purchase flow returned:', err.message);
-        const upgradeRes = await SubscriptionService.upgradeSubscription(userId, tier, cycle);
+        console.warn('[BillingService] Native purchase flow error:', err.message);
         return {
-          success: upgradeRes.success,
-          message: upgradeRes.message || `Welcome to ${PLAN_PRICING[tier].name}!`,
-          tier: tier,
+          success: false,
+          message:
+            err.message ||
+            'Payment could not be completed. Please ensure your Google Play account has an active payment method.',
         };
       }
     }
 
-    // Non-Android / Web fallback
-    const res = await SubscriptionService.upgradeSubscription(userId, tier, cycle);
     return {
-      success: res.success,
-      message: res.message,
-      tier: tier,
+      success: false,
+      message: 'In-app purchases are only available on Android devices.',
     };
   },
 

@@ -42,7 +42,7 @@ export const AppUpdateModal: React.FC<Props> = ({
 
           <Text style={styles.title}>Update Available</Text>
           <Text style={styles.subtitle}>
-            A newer version (v{updateInfo.latestVersion}) is ready to install from Google Play.
+            A newer version (v{updateInfo.latestVersion}) is ready to install.
           </Text>
 
           {updateInfo.releaseNotes && (
@@ -53,7 +53,7 @@ export const AppUpdateModal: React.FC<Props> = ({
           )}
 
           <TouchableOpacity style={styles.updateBtn} onPress={handleUpdate} activeOpacity={0.85}>
-            <Text style={styles.updateBtnText}>Update Now In-App</Text>
+            <Text style={styles.updateBtnText}>Update Now</Text>
             <ArrowRight color="#FFFFFF" size={16} style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
