@@ -30,7 +30,7 @@ def main():
         print(f"Warning: could not copy to root: {e}")
 
     print(f"\n==========================================")
-    print(f"SUCCESS: Release AAB (versionCode 61) generated at:")
+    print(f"SUCCESS: Release AAB generated at:")
     print(f"{aab_path}")
     print(f"Root path: {root_aab}")
     print(f"==========================================\n")
