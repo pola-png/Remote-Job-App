@@ -25,51 +25,221 @@ let lastAppOpenShowTime = 0;
 let isAnyAdShowing = false;
 const APP_OPEN_COOLDOWN_MS = 60 * 1000; // 1-minute cooldown between app open ads
 
+let appOpenWaiters: Array<(ad: AppOpenAd | null) => void> = [];
+
 export const AdMobService = {
   getAppId(): string {
     return ADMOB_CONFIG.APP_ID;
   },
 
   getRewardedAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.REWARDED;
     }
     return ADMOB_CONFIG.AD_UNITS.REWARDED;
   },
 
   getInterstitialAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.INTERSTITIAL;
     }
     return ADMOB_CONFIG.AD_UNITS.INTERSTITIAL;
   },
 
   getAppOpenAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.APP_OPEN;
     }
     return ADMOB_CONFIG.AD_UNITS.APP_OPEN;
   },
 
   getBannerAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.BANNER;
     }
     return ADMOB_CONFIG.AD_UNITS.BANNER;
   },
 
   getNativeAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.BANNER;
     }
     return ADMOB_CONFIG.AD_UNITS.BANNER;
   },
 
   getRewardedInterstitialAdUnitId(): string {
-    if (__DEV__) {
+    if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.REWARDED_INTERSTITIAL;
     }
     return ADMOB_CONFIG.AD_UNITS.REWARDED_INTERSTITIAL;
+  },
+
+  /**
+   * Preload App Open Ad in background for immediate launch / resume presentation
+   */
+  preloadAppOpenAd(): void {
+    if (isAppOpenReady || isAppOpenLoading) return;
+    isAppOpenLoading = true;
+
+    const adUnitId = this.getAppOpenAdUnitId();
+    try {
+      console.log('AdMob: Preloading App Open Ad with unit ID:', adUnitId);
+      const appOpen = AppOpenAd.createForAdRequest(adUnitId, {
+        requestNonPersonalizedAdsOnly: false,
+      });
+
+      appOpen.addAdEventListener(AdEventType.LOADED, () => {
+        preloadedAppOpen = appOpen;
+        isAppOpenReady = true;
+        isAppOpenLoading = false;
+        console.log('AdMob: App Open Ad preloaded and ready for presentation');
+
+        // Notify any pending show requests waiting on cold startup
+        const waiters = [...appOpenWaiters];
+        appOpenWaiters = [];
+        waiters.forEach((cb) => cb(appOpen));
+      });
+
+      appOpen.addAdEventListener(AdEventType.ERROR, (error) => {
+        isAppOpenLoading = false;
+        isAppOpenReady = false;
+        preloadedAppOpen = null;
+        console.warn('AdMob: App Open Ad preload error:', error);
+
+        const waiters = [...appOpenWaiters];
+        appOpenWaiters = [];
+        waiters.forEach((cb) => cb(null));
+      });
+
+      appOpen.load();
+    } catch (err) {
+      isAppOpenLoading = false;
+      console.warn('AdMob: App Open Ad preload exception:', err);
+    }
+  },
+
+  /**
+   * Request and show App Open Ad on app launch / resume
+   */
+  async showAppOpenAd(): Promise<boolean> {
+    const now = Date.now();
+    // Do not show if another full-screen ad is active or if shown recently within cooldown window
+    if (isAnyAdShowing) {
+      console.log('AdMob: Another ad is currently displaying, skipping App Open Ad');
+      return false;
+    }
+
+    if (now - lastAppOpenShowTime < APP_OPEN_COOLDOWN_MS) {
+      console.log('AdMob: App Open Ad cooldown period active, skipping');
+      return false;
+    }
+
+    const presentAd = (ad: AppOpenAd): Promise<boolean> => {
+      preloadedAppOpen = null;
+      isAppOpenReady = false;
+      isAnyAdShowing = true;
+      lastAppOpenShowTime = Date.now();
+
+      return new Promise<boolean>((resolve) => {
+        let closedSub: (() => void) | null = null;
+        let errorSub: (() => void) | null = null;
+
+        const cleanup = () => {
+          isAnyAdShowing = false;
+          if (closedSub) closedSub();
+          if (errorSub) errorSub();
+          setTimeout(() => this.preloadAppOpenAd(), 1000);
+        };
+
+        closedSub = ad.addAdEventListener(AdEventType.CLOSED, () => {
+          cleanup();
+          resolve(true);
+        });
+
+        errorSub = ad.addAdEventListener(AdEventType.ERROR, () => {
+          cleanup();
+          resolve(false);
+        });
+
+        ad.show().catch((err) => {
+          cleanup();
+          console.warn('AdMob: Failed to show App Open Ad:', err);
+          resolve(false);
+        });
+      });
+    };
+
+    // 1. If preloaded ad is already in memory, display immediately
+    if (preloadedAppOpen && isAppOpenReady) {
+      return presentAd(preloadedAppOpen);
+    }
+
+    // 2. If ad is currently in flight loading (cold startup), wait up to 8 seconds
+    if (isAppOpenLoading) {
+      return new Promise<boolean>((resolve) => {
+        let resolved = false;
+        const timer = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            resolve(false);
+          }
+        }, 8000);
+
+        appOpenWaiters.push((ad) => {
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(timer);
+            if (ad) {
+              presentAd(ad).then(resolve);
+            } else {
+              resolve(false);
+            }
+          }
+        });
+      });
+    }
+
+    // 3. Fallback: on-demand load and show
+    return new Promise<boolean>((resolve) => {
+      const adUnitId = this.getAppOpenAdUnitId();
+      let handled = false;
+
+      const timeout = setTimeout(() => {
+        if (!handled) {
+          handled = true;
+          this.preloadAppOpenAd();
+          resolve(false);
+        }
+      }, 8000);
+
+      try {
+        const appOpen = AppOpenAd.createForAdRequest(adUnitId, {
+          requestNonPersonalizedAdsOnly: false,
+        });
+
+        appOpen.addAdEventListener(AdEventType.LOADED, () => {
+          if (handled || isAnyAdShowing) return;
+          clearTimeout(timeout);
+          handled = true;
+          presentAd(appOpen).then(resolve);
+        });
+
+        appOpen.addAdEventListener(AdEventType.ERROR, (err) => {
+          if (!handled) {
+            handled = true;
+            clearTimeout(timeout);
+            console.warn('AdMob on-demand App Open error:', err);
+            resolve(false);
+          }
+        });
+
+        appOpen.load();
+      } catch (err) {
+        clearTimeout(timeout);
+        console.warn('AdMob on-demand App Open exception:', err);
+        resolve(false);
+      }
+    });
   },
 
   /**

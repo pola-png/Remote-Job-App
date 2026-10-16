@@ -168,10 +168,8 @@ export default function App() {
         // Preload ads in background for instant playback
         AdMobService.preloadRewardedAd();
         AdMobService.preloadAppOpenAd();
-        // Show App Open Ad on cold startup
-        setTimeout(() => {
-          AdMobService.showAppOpenAd();
-        }, 1200);
+        // Show App Open Ad on cold startup (handled seamlessly via preload waiter)
+        AdMobService.showAppOpenAd();
       })
       .catch((err) => {
         console.warn('Google Mobile Ads Init Warning:', err);

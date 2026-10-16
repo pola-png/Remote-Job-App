@@ -1,54 +1,48 @@
 import { ADMOB_CONFIG } from '../config/admob';
-import { LEVELPLAY_CONFIG } from '../config/ironSource';
+import { PANGLE_CONFIG } from '../config/pangle';
 import { AdMobService } from './admob';
-import { IronSourceLevelPlayService } from './ironSource';
 
 export interface UnifiedAdRewardResult {
   rewardEarned: boolean;
-  network: 'LEVELPLAY' | 'ADMOB' | 'SPONSOR';
+  network: 'ADMOB' | 'PANGLE';
   adUnitId: string;
   amount: number;
 }
 
 export const UnifiedAdService = {
   /**
-   * Dual-Network Banner Ad Unit Resolution
-   * Returns active LevelPlay Ad Unit with AdMob fallback
+   * Primary AdMob Banner Unit with Pangle mediation fallback
    */
   getBannerAdUnits() {
     return {
-      levelPlay: LEVELPLAY_CONFIG.AD_UNITS.BANNER,
-      adMob: ADMOB_CONFIG.AD_UNITS.BANNER,
+      primary: ADMOB_CONFIG.AD_UNITS.BANNER,
+      panglePlacement: PANGLE_CONFIG.PLACEMENTS.BANNER.PRIMARY_FEED,
     };
   },
 
   /**
-   * Dual-Network Native Ad Unit Resolution
-   * Returns active LevelPlay Native Unit with AdMob Native Advanced fallback
+   * Primary AdMob Native Unit with Pangle mediation fallback
    */
   getNativeAdUnits() {
     return {
-      levelPlay: LEVELPLAY_CONFIG.AD_UNITS.NATIVE,
-      adMob: ADMOB_CONFIG.AD_UNITS.NATIVE_ADVANCED,
+      primary: ADMOB_CONFIG.AD_UNITS.NATIVE_ADVANCED,
+      panglePlacement: PANGLE_CONFIG.PLACEMENTS.NATIVE.FEED_INLINE,
     };
   },
 
   /**
-   * Dual-Network Rewarded Video Resolution
-   * Provides 100% fill rate for unlocking job applications & micro-tasks
+   * Primary AdMob Rewarded Video Unit with Pangle mediation fallback
    */
   getRewardedAdUnits() {
     return {
-      levelPlay: LEVELPLAY_CONFIG.AD_UNITS.REWARDED,
-      adMob: ADMOB_CONFIG.AD_UNITS.REWARDED,
+      primary: ADMOB_CONFIG.AD_UNITS.REWARDED,
+      panglePlacement: PANGLE_CONFIG.PLACEMENTS.REWARDED.PRIMARY_HIGH_ECPM,
     };
   },
 
   /**
-   * Show Rewarded Video with dual-network mediation cascade:
-   * 1. Try IronSource LevelPlay first
-   * 2. If IronSource does not fill, cascade to Google AdMob
-   * 3. Guarantees 100% video fill rate for View Details & Apply actions
+   * Show Real Rewarded Video Ad (AdMob primary with Pangle mediation fallback)
+   * Strictly requires completion of real ad before reward is granted - no mock/fake ads.
    */
   async showRewardedAd(
     onRewardEarned: (reward: UnifiedAdRewardResult) => void,
@@ -56,60 +50,52 @@ export const UnifiedAdService = {
     onError?: (err: any) => void
   ): Promise<void> {
     try {
-      // Step 1: Attempt IronSource LevelPlay Rewarded Video
-      await IronSourceLevelPlayService.showRewardedAd(
-        (levelPlayReward) => {
-          onRewardEarned({
-            rewardEarned: levelPlayReward.rewardEarned,
-            network: 'LEVELPLAY',
-            adUnitId: levelPlayReward.adUnitId,
-            amount: levelPlayReward.amount,
-          });
+      console.log('AdMob + Pangle Mediation: Requesting Real Rewarded Video...');
+      await AdMobService.showRewardedAd(
+        (admobReward) => {
+          if (admobReward.rewardEarned) {
+            onRewardEarned({
+              rewardEarned: true,
+              network: 'ADMOB',
+              adUnitId: ADMOB_CONFIG.AD_UNITS.REWARDED,
+              amount: admobReward.amount || 1,
+            });
+          }
         },
         onDismissed,
-        async (_ironSourceErr) => {
-          // Step 2: IronSource had no fill / failed -> Waterfall cascade to Google AdMob
-          console.log('Dual-Ad Mediation: IronSource did not fill, switching to Google AdMob...');
-          try {
-            await AdMobService.showRewardedAd(
-              (admobReward) => {
-                onRewardEarned({
-                  rewardEarned: admobReward.rewardEarned,
-                  network: 'ADMOB',
-                  adUnitId: ADMOB_CONFIG.AD_UNITS.REWARDED,
-                  amount: 1,
-                });
-              },
-              onDismissed,
-              onError
-            );
-          } catch (admobErr) {
-            console.warn('AdMob also failed in cascade:', admobErr);
-            onError?.(admobErr);
-            if (onDismissed) onDismissed();
-          }
+        (err) => {
+          console.warn('AdMob Rewarded Error:', err);
+          onError?.(err);
         }
       );
     } catch (err) {
-      // If IronSource throw, fallback to AdMob immediately
-      console.log('Dual-Ad Mediation Exception: Cascading to Google AdMob...');
-      try {
-        await AdMobService.showRewardedAd(
-          (admobReward) => {
-            onRewardEarned({
-              rewardEarned: admobReward.rewardEarned,
-              network: 'ADMOB',
-              adUnitId: ADMOB_CONFIG.AD_UNITS.REWARDED,
-              amount: 1,
-            });
-          },
-          onDismissed,
-          onError
-        );
-      } catch (admobErr) {
-        onError?.(admobErr);
-        if (onDismissed) onDismissed();
-      }
+      console.warn('AdMob Rewarded Exception:', err);
+      onError?.(err);
+      if (onDismissed) onDismissed();
+    }
+  },
+
+  /**
+   * Show Real Interstitial Ad (AdMob primary with Pangle mediation fallback)
+   */
+  async showInterstitialAd(): Promise<boolean> {
+    try {
+      return await AdMobService.showInterstitialAd();
+    } catch (err) {
+      console.warn('AdMob Interstitial Error:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Show Real App Open Ad on launch / resume
+   */
+  async showAppOpenAd(): Promise<boolean> {
+    try {
+      return await AdMobService.showAppOpenAd();
+    } catch (err) {
+      console.warn('AdMob App Open Error:', err);
+      return false;
     }
   },
 };

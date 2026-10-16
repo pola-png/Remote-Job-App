@@ -18,6 +18,8 @@ import {
   Globe,
   DollarSign,
 } from '../components/LucideIcons';
+import { BannerAdView } from '../components/BannerAdView';
+import { NativeAdCard } from '../components/NativeAdCard';
 
 interface Props {
   onSelectRemoteJobs: () => void;
@@ -89,6 +91,9 @@ export const LandingScreen: React.FC<Props> = ({
           </View>
         </TouchableOpacity>
 
+        {/* Real Native / MRec Sponsor Card (AdMob primary, Pangle mediation fallback, no mock ads) */}
+        <NativeAdCard placement="landing_between_cards" />
+
         {/* Card 2: Micro-Jobs & Daily Tasks */}
         <TouchableOpacity
           style={[styles.choiceCard, styles.choiceCardEmerald]}
@@ -127,6 +132,9 @@ export const LandingScreen: React.FC<Props> = ({
             <ArrowRight color="#34D399" size={18} style={{ marginLeft: 6 }} />
           </View>
         </TouchableOpacity>
+
+        {/* Real Adaptive Banner View (AdMob primary, Pangle mediation fallback, no mock ads) */}
+        <BannerAdView placement="landing_bottom" />
 
         {/* Trust Badges Footer */}
         <View style={styles.trustSection}>

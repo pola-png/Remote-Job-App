@@ -1,6 +1,8 @@
+import React from 'react';
 import Link from 'next/link';
 import { supabase, RemoteJob, mapJobRow } from '@/lib/supabase';
 import { Briefcase, MapPin, Search, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
+import AdSenseSlot from '@/app/components/AdSenseSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +133,9 @@ export default async function HomePage({
         </div>
       </section>
 
+      {/* Google AdSense Display Responsive Banner (No fake ads) */}
+      <AdSenseSlot className="landing-adsense-top" />
+
       {/* App Install Feature Card */}
       <section className="app-banner">
         <div>
@@ -177,58 +182,64 @@ export default async function HomePage({
               </Link>
             </div>
           ) : (
-            jobs.map((job) => {
+            jobs.map((job, index) => {
               const salaryDisplay = job.salary && !job.salary.toLowerCase().includes('competitive') ? job.salary : null;
 
               return (
-                <Link key={job.id} href={`/jobs/${job.slug || encodeURIComponent(job.id)}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
-                  <div className="job-info-left">
-                    <div className="company-logo">
-                      {job.company_logo ? (
-                        <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        job.company.charAt(0).toUpperCase()
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>{job.company}</span>
-                        {job.is_featured && (
-                          <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38BDF8', fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
-                            FEATURED
-                          </span>
+                <React.Fragment key={job.id}>
+                  <Link href={`/jobs/${job.slug || encodeURIComponent(job.id)}`} className={`job-card ${job.is_featured ? 'job-card-featured' : ''}`}>
+                    <div className="job-info-left">
+                      <div className="company-logo">
+                        {job.company_logo ? (
+                          <img src={job.company_logo} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          job.company.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="job-title">{job.title}</div>
-                      <div className="job-meta">
-                        <span className="job-meta-item">
-                          <MapPin size={14} color="#38BDF8" /> {job.location || 'Worldwide (100% Remote)'}
-                        </span>
-                        {job.job_type && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>{job.company}</span>
+                          {job.is_featured && (
+                            <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38BDF8', fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
+                              FEATURED
+                            </span>
+                          )}
+                        </div>
+                        <div className="job-title">{job.title}</div>
+                        <div className="job-meta">
                           <span className="job-meta-item">
-                            <Briefcase size={14} /> {job.job_type}
+                            <MapPin size={14} color="#38BDF8" /> {job.location || 'Worldwide (100% Remote)'}
                           </span>
-                        )}
-                        {salaryDisplay && (
-                          <span className="tag salary-tag">
-                            💰 {salaryDisplay}
-                          </span>
-                        )}
+                          {job.job_type && (
+                            <span className="job-meta-item">
+                              <Briefcase size={14} /> {job.job_type}
+                            </span>
+                          )}
+                          {salaryDisplay && (
+                            <span className="tag salary-tag">
+                              💰 {salaryDisplay}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div className="tags-row">
-                      {job.tags && job.tags.slice(0, 3).map((tag, idx) => (
-                        <span key={idx} className="tag">{tag}</span>
-                      ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="tags-row">
+                        {job.tags && job.tags.slice(0, 3).map((tag, idx) => (
+                          <span key={idx} className="tag">{tag}</span>
+                        ))}
+                      </div>
+                      <button className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                        Apply <ArrowRight size={14} />
+                      </button>
                     </div>
-                    <button className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                      Apply <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </Link>
+                  </Link>
+
+                  {index === 3 && (
+                    <AdSenseSlot className="landing-feed-adsense" />
+                  )}
+                </React.Fragment>
               );
             })
           )}

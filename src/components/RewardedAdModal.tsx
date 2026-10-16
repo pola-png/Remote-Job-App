@@ -47,21 +47,22 @@ export const RewardedAdModal: React.FC<Props> = ({
 
   const handleStartAd = async () => {
     setIsLoadingAd(true);
-    // Request and show real Google AdMob Rewarded Video
+    // Request and show real Google AdMob + Pangle Rewarded Video
     await UnifiedAdService.showRewardedAd(
       (reward) => {
         setIsLoadingAd(false);
-        onRewardEarned();
-        onClose();
+        if (reward?.rewardEarned) {
+          onRewardEarned();
+          onClose();
+        }
       },
       () => {
         setIsLoadingAd(false);
-        onRewardEarned();
         onClose();
       },
       (err) => {
         setIsLoadingAd(false);
-        onRewardEarned();
+        console.warn('Real Rewarded Ad was not completed / no fill:', err);
         onClose();
       }
     );

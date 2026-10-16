@@ -42,17 +42,18 @@ export const VideoReviewScreen: React.FC<Props> = ({
   const handlePlayRealVideoAd = async () => {
     setIsPlayingAd(true);
     await UnifiedAdService.showRewardedAd(
-      () => {
+      (reward) => {
         setIsPlayingAd(false);
-        setHasWatchedVideo(true);
+        if (reward?.rewardEarned) {
+          setHasWatchedVideo(true);
+        }
       },
       () => {
         setIsPlayingAd(false);
-        setHasWatchedVideo(true);
       },
-      () => {
+      (err) => {
         setIsPlayingAd(false);
-        setHasWatchedVideo(true);
+        Alert.alert('Ad Unavailable', 'Sponsor video could not be loaded at this time. Please try again in a moment.');
       }
     );
   };
