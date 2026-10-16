@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { notFound, redirect, RedirectType } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, RemoteJob, mapJobRow, slugify, buildSeoJobSlug, getBaseSalarySchema } from '@/lib/supabase';
 import { MapPin, DollarSign, Clock, Briefcase, ExternalLink, ArrowLeft, ShieldCheck, Share2 } from 'lucide-react';
@@ -179,13 +179,7 @@ export default async function JobDetailPage({ params }: Props) {
     return null;
   }
 
-  // 301 Permanent Redirect legacy or non-canonical URLs to the rich high-ranking SEO slug
   const targetSlug = buildSeoJobSlug(job);
-  const rawSlug = decodeURIComponent(params.slug).trim();
-  if (rawSlug !== targetSlug) {
-    redirect(`/jobs/${targetSlug}`, RedirectType.replace);
-  }
-
   const applyUrl = job.apply_url || job.direct_apply_url || '#';
   const canonicalUrl = `https://remotejobshq.online/jobs/${targetSlug}`;
 

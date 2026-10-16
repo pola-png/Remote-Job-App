@@ -44,7 +44,14 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '') || 'job';
 }
 
-export function formatSalarySlug(job: { salary_min?: number; salary_max?: number; salary_range?: string; salary?: string }): string {
+export function formatSalarySlug(job: {
+  salary_min?: number;
+  salary_max?: number;
+  salary_range?: string;
+  salary?: string;
+  title?: string;
+  category?: string;
+}): string {
   let min = job.salary_min;
   let max = job.salary_max;
   const text = (job.salary_range || job.salary || '').toUpperCase();
@@ -73,7 +80,45 @@ export function formatSalarySlug(job: { salary_min?: number; salary_max?: number
     }
   }
 
-  if (!min && !max) return '';
+  // Provide realistic market benchmark for role if not specified so every URL has a high-intent salary keyword
+  if (!min && !max) {
+    const title = (job.title || '').toLowerCase();
+    const cat = (job.category || '').toLowerCase();
+    if (title.includes('devops') || title.includes('sre') || title.includes('cloud') || title.includes('security')) {
+      min = 110000;
+      max = 175000;
+    } else if (title.includes('engineer') || title.includes('developer') || title.includes('architect') || cat.includes('development') || cat.includes('engineering')) {
+      min = 95000;
+      max = 165000;
+    } else if (title.includes('product') || title.includes('program manager')) {
+      min = 100000;
+      max = 160000;
+    } else if (title.includes('data') || title.includes('ai') || title.includes('machine learning')) {
+      min = 105000;
+      max = 175000;
+    } else if (title.includes('design') || title.includes('ui') || title.includes('ux') || cat.includes('design')) {
+      min = 75000;
+      max = 135000;
+    } else if (title.includes('marketing') || title.includes('growth') || title.includes('seo') || cat.includes('marketing')) {
+      min = 65000;
+      max = 120000;
+    } else if (title.includes('sales') || title.includes('account executive') || cat.includes('sales')) {
+      min = 70000;
+      max = 130000;
+    } else if (title.includes('support') || title.includes('customer success') || cat.includes('support')) {
+      min = 45000;
+      max = 85000;
+    } else if (title.includes('writer') || title.includes('content') || cat.includes('writing')) {
+      min = 50000;
+      max = 95000;
+    } else if (title.includes('finance') || title.includes('accounting') || cat.includes('finance')) {
+      min = 70000;
+      max = 130000;
+    } else {
+      min = 60000;
+      max = 120000;
+    }
+  }
 
   if ((max && max <= 500) || (min && min <= 500) || text.includes('/HR') || text.includes('HOUR')) {
     if (min && max && min !== max) return `${min}-${max}-hr`;
@@ -125,6 +170,7 @@ export function buildSeoJobSlug(job: {
   salary?: string;
   salary_min?: number;
   salary_max?: number;
+  category?: string;
   id?: string;
 }): string {
   const parts: string[] = [];

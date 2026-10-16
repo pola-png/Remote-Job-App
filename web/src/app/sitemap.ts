@@ -72,6 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       salary_range: job.salary_range || undefined,
       salary_min: typeof job.salary_min === 'number' ? job.salary_min : undefined,
       salary_max: typeof job.salary_max === 'number' ? job.salary_max : undefined,
+      category: job.category || undefined,
       id: job.id,
     });
 
