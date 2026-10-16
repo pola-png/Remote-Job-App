@@ -91,8 +91,8 @@ android {
         applicationId 'com.xapzap.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 62
-        versionName "30.0.17"
+        versionCode 63
+        versionName "30.0.18"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
@@ -216,4 +216,36 @@ dependencies {
 }
 
 apply plugin: "com.google.gms.google-services"
+
+// Automatic 16 KB Memory Page Size Support hook for Google Play (Android 15+)
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('NativeLibs')) {
+        task.doLast {
+            def pythonCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'python' : 'python3'
+            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.py")
+            if (scriptFile.exists()) {
+                def mDir = file("${buildDir}/intermediates/merged_native_libs")
+                if (mDir.exists()) {
+                    exec {
+                        commandLine pythonCmd, scriptFile.absolutePath, mDir.absolutePath
+                    }
+                }
+            }
+        }
+    }
+    if (task.name.startsWith('strip') && task.name.endsWith('DebugSymbols')) {
+        task.doLast {
+            def pythonCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'python' : 'python3'
+            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.py")
+            if (scriptFile.exists()) {
+                def sDir = file("${buildDir}/intermediates/stripped_native_libs")
+                if (sDir.exists()) {
+                    exec {
+                        commandLine pythonCmd, scriptFile.absolutePath, sDir.absolutePath
+                    }
+                }
+            }
+        }
+    }
+}
 
