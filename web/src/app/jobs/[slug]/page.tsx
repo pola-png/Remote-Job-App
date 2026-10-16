@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound, redirect, RedirectType } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, slugify } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, slugify, getBaseSalarySchema } from '@/lib/supabase';
 import { MapPin, DollarSign, Clock, Briefcase, ExternalLink, ArrowLeft, ShieldCheck, Share2 } from 'lucide-react';
 
 interface Props {
@@ -156,12 +156,17 @@ export default async function JobDetailPage({ params }: Props) {
   const applyUrl = job.apply_url || job.direct_apply_url || '#';
   const canonicalUrl = `https://remotejobshq.online/jobs/${targetSlug}`;
 
+  // Format description for Google for Jobs rich rendering
+  const formattedDescription = job.description
+    ? (job.description.includes('<') ? job.description : job.description.split(/\n\n+/).map((p) => `<p>${p.trim()}</p>`).join(''))
+    : `<p>${job.title} role at ${job.company}. Full details and apply instructions on Remote Jobs HQ.</p>`;
+
   // Google for Jobs Schema.org JobPosting structured JSON-LD
   const jobPostingSchema = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
     title: job.title,
-    description: job.description || `${job.title} role at ${job.company}. Full details and apply instructions on Remote Jobs HQ.`,
+    description: formattedDescription,
     identifier: {
       '@type': 'PropertyValue',
       name: job.company,
@@ -182,15 +187,7 @@ export default async function JobDetailPage({ params }: Props) {
     },
     directApply: true,
     url: canonicalUrl,
-    baseSalary: job.salary && !job.salary.toLowerCase().includes('competitive') ? {
-      '@type': 'MonetaryAmount',
-      currency: 'USD',
-      value: {
-        '@type': 'QuantitativeValue',
-        value: job.salary,
-        unitText: 'YEAR',
-      },
-    } : undefined,
+    baseSalary: getBaseSalarySchema(job),
   };
 
   // Google Breadcrumbs Schema
