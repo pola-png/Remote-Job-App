@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound, redirect, RedirectType } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, slugify, getBaseSalarySchema } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, slugify, buildSeoJobSlug, getBaseSalarySchema } from '@/lib/supabase';
 import { MapPin, DollarSign, Clock, Briefcase, ExternalLink, ArrowLeft, ShieldCheck, Share2 } from 'lucide-react';
 
 interface Props {
@@ -10,6 +10,19 @@ interface Props {
 
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
+
+function extractCoreSlug(rawSlug: string): string {
+  let s = rawSlug;
+  // Strip trailing salary: e.g. -120k-150k, -205k, -30-70-hr, -120-hr
+  s = s.replace(/-(?:\d+k(?:-\d+k)?|\d+(?:-\d+)?-hr)$/i, '');
+  // Strip trailing job type: -full-time, -part-time, -contract, -freelance, -internship
+  s = s.replace(/-(?:full-time|part-time|contract|freelance|internship)$/i, '');
+  // Strip trailing country / anywhere / worldwide
+  s = s.replace(/-(?:usa|uk|europe|canada|australia|germany|france|latam|apac|india|spain|brazil|netherlands|ireland|anywhere|worldwide)$/i, '');
+  // Strip trailing workplace: -remote, -onsite, -hybrid
+  s = s.replace(/-(?:remote|onsite|hybrid)$/i, '');
+  return s;
+}
 
 async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
   try {
@@ -59,36 +72,55 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
       if (uuidData) return mapJobRow(uuidData);
     }
 
-    // 4. Search by Title Words (matching clean title slug)
-    const words = slug.split('-').filter((w) => w.length >= 2);
+    // 4. Candidate Search via Title & Company Tokens
+    const core = extractCoreSlug(slug);
+    const words = core.split('-').filter((w) => w.length >= 2);
     if (words.length > 0) {
-      const pattern = '%' + words.slice(0, 5).join('%') + '%';
-      const { data: candidates } = await supabase
-        .from('job_postings')
-        .select('*')
-        .ilike('title', pattern)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const firstWord = words[0];
+      const lastWord = words[words.length - 1];
 
-      if (candidates && candidates.length > 0) {
-        const exact = candidates.find((c) => slugify(c.title) === slug);
-        if (exact) return mapJobRow(exact);
-        return mapJobRow(candidates[0]);
+      let query = supabase.from('job_postings').select('*');
+      if (words.length >= 3) {
+        query = query.ilike('title', `%${words[0]}%${words[1]}%`);
+      } else {
+        query = query.or(`title.ilike.%${firstWord}%,company.ilike.%${lastWord}%`);
       }
-    }
 
-    // 5. Broader Fallback
-    const firstTwo = words.slice(0, 2).join('%');
-    if (firstTwo) {
-      const { data: fallback } = await supabase
-        .from('job_postings')
-        .select('*')
-        .ilike('title', `%${firstTwo}%`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: candidates } = await query.order('created_at', { ascending: false }).limit(50);
 
-      if (fallback) return mapJobRow(fallback);
+      let candidateList = candidates && candidates.length > 0 ? candidates : [];
+      if (candidateList.length === 0) {
+        const { data: fallbackList } = await supabase
+          .from('job_postings')
+          .select('*')
+          .ilike('title', `%${firstWord}%`)
+          .limit(50);
+        if (fallbackList) candidateList = fallbackList;
+      }
+
+      if (candidateList.length > 0) {
+        let bestCandidate = null;
+        let bestScore = -1;
+
+        for (const c of candidateList) {
+          let score = 0;
+          const cRichSlug = buildSeoJobSlug(c);
+          const cTitleSlug = slugify(c.title);
+          const cCompanySlug = slugify(c.company);
+
+          if (cRichSlug === slug) score += 100;
+          if (cTitleSlug === slug) score += 80;
+          if (slug.startsWith(cTitleSlug)) score += 40;
+          if (cCompanySlug && slug.includes(cCompanySlug)) score += 30;
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestCandidate = c;
+          }
+        }
+
+        if (bestCandidate) return mapJobRow(bestCandidate);
+      }
     }
 
     return null;
@@ -106,9 +138,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
+  const targetSlug = buildSeoJobSlug(job);
   const title = `${job.title} at ${job.company} (100% Remote)`;
   const description = `Apply for ${job.title} at ${job.company}. ${job.salary && !job.salary.toLowerCase().includes('competitive') ? `Salary: ${job.salary}.` : ''} Remote work opportunity. Learn more and apply now on Remote Jobs HQ.`;
-  const canonicalUrl = `https://remotejobshq.online/jobs/${slugify(job.title)}`;
+  const canonicalUrl = `https://remotejobshq.online/jobs/${targetSlug}`;
 
   return {
     title,
@@ -146,10 +179,10 @@ export default async function JobDetailPage({ params }: Props) {
     return null;
   }
 
-  // 301 Permanent Redirect legacy raw ID URLs to the clean SEO title URL
-  const targetSlug = slugify(job.title);
+  // 301 Permanent Redirect legacy or non-canonical URLs to the rich high-ranking SEO slug
+  const targetSlug = buildSeoJobSlug(job);
   const rawSlug = decodeURIComponent(params.slug).trim();
-  if (rawSlug === job.id && targetSlug && targetSlug !== rawSlug) {
+  if (rawSlug !== targetSlug) {
     redirect(`/jobs/${targetSlug}`, RedirectType.replace);
   }
 

@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { supabase, slugify } from '@/lib/supabase';
+import { supabase, slugify, buildSeoJobSlug } from '@/lib/supabase';
 
 // Force dynamic ISR execution - regenerates every hour in background and serves instantly from Edge CDN
 export const revalidate = 3600;
@@ -7,6 +7,12 @@ export const revalidate = 3600;
 interface DynamicJobRecord {
   id: string;
   title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  job_type?: string | null;
+  salary_range?: string | null;
+  salary_min?: number | null;
+  salary_max?: number | null;
   category?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
@@ -25,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     while (true) {
       const { data, error } = await supabase
         .from('job_postings')
-        .select('id, title, category, updated_at, created_at, posted_timestamp')
+        .select('id, title, company, location, job_type, salary_range, salary_min, salary_max, category, updated_at, created_at, posted_timestamp')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .range(from, from + pageSize - 1);
@@ -44,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ? new Date(allJobs[0].updated_at || allJobs[0].created_at!)
     : new Date();
 
-  // 3. Dynamic Job Posting Routes (Clean Title Slugs for Google SEO)
+  // 3. Dynamic Job Posting Routes (Rich High-Intent SEO Slugs for Google)
   const seenSlugs = new Set<string>();
   const jobRoutes: MetadataRoute.Sitemap = [];
 
@@ -58,12 +64,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       date = new Date(Number(job.posted_timestamp));
     }
 
-    let slug = slugify(job.title || '');
-    if (!slug || slug === 'job') {
+    let slug = buildSeoJobSlug({
+      title: job.title || undefined,
+      company: job.company || undefined,
+      location: job.location || undefined,
+      job_type: job.job_type || undefined,
+      salary_range: job.salary_range || undefined,
+      salary_min: typeof job.salary_min === 'number' ? job.salary_min : undefined,
+      salary_max: typeof job.salary_max === 'number' ? job.salary_max : undefined,
+      id: job.id,
+    });
+
+    if (!slug || slug === 'job' || slug === 'remote-job') {
       slug = `job-${job.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}`;
     }
 
-    // Disambiguate if exact duplicate title occurs so all jobs have distinct sitemap URLs
+    // Disambiguate if exact duplicate slug occurs so all jobs have distinct sitemap URLs
     if (seenSlugs.has(slug)) {
       const cleanId = job.id.replace(/^jobicy_/, '').replace(/^himalayas_/, '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
       slug = `${slug}-${cleanId}`;

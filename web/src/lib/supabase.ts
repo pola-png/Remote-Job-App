@@ -44,16 +44,134 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '') || 'job';
 }
 
-export function getJobSlug(job: { title?: string; id?: string; slug?: string }): string {
-  if (job.slug) return job.slug;
-  if (job.title) {
-    const s = slugify(job.title);
-    if (s && s !== 'job') return s;
+export function formatSalarySlug(job: { salary_min?: number; salary_max?: number; salary_range?: string; salary?: string }): string {
+  let min = job.salary_min;
+  let max = job.salary_max;
+  const text = (job.salary_range || job.salary || '').toUpperCase();
+
+  if (!min && !max && text && !text.includes('COMPETITIVE')) {
+    const kRegex = /(\d+(?:\.\d+)?)\s*K\b/gi;
+    const kMatches: RegExpExecArray[] = [];
+    let km: RegExpExecArray | null;
+    while ((km = kRegex.exec(text)) !== null) {
+      kMatches.push(km);
+    }
+    if (kMatches.length >= 2) {
+      min = Math.round(parseFloat(kMatches[0][1]) * 1000);
+      max = Math.round(parseFloat(kMatches[1][1]) * 1000);
+    } else {
+      const nums = (text.replace(/,/g, '').match(/\d+(?:\.\d+)?/g) || [])
+        .map(Number)
+        .filter((n) => n > 10);
+      if (nums.length >= 2) {
+        min = Math.min(nums[0], nums[1]);
+        max = Math.max(nums[0], nums[1]);
+      } else if (nums.length === 1) {
+        min = nums[0];
+        max = nums[0];
+      }
+    }
   }
-  if (job.id) {
-    return slugify(job.id);
+
+  if (!min && !max) return '';
+
+  if ((max && max <= 500) || (min && min <= 500) || text.includes('/HR') || text.includes('HOUR')) {
+    if (min && max && min !== max) return `${min}-${max}-hr`;
+    return `${min || max}-hr`;
   }
-  return 'remote-job';
+
+  const formatK = (val: number) => (val >= 1000 ? `${Math.round(val / 1000)}k` : `${val}`);
+  if (min && max && min !== max) {
+    return `${formatK(min)}-${formatK(max)}`;
+  }
+  return formatK(min || max || 0);
+}
+
+export function formatLocationSlug(loc?: string): string {
+  if (!loc) return 'anywhere';
+  const l = loc.toLowerCase().replace(/remote\s*[-–—:]*\s*/gi, '').trim();
+  if (!l || l.includes('worldwide') || l.includes('anywhere') || l.includes('global') || l.includes('100%')) return 'anywhere';
+  if (l.includes('united states') || l.includes('usa') || l.includes('us only') || l.includes('north america')) return 'usa';
+  if (l.includes('united kingdom') || l.includes('uk')) return 'uk';
+  if (l.includes('europe') || l.includes('eu')) return 'europe';
+  if (l.includes('canada')) return 'canada';
+  if (l.includes('australia')) return 'australia';
+  if (l.includes('germany')) return 'germany';
+  if (l.includes('france')) return 'france';
+  if (l.includes('latin america') || l.includes('latam')) return 'latam';
+  if (l.includes('asia') || l.includes('apac')) return 'apac';
+  if (l.includes('india')) return 'india';
+  if (l.includes('spain')) return 'spain';
+  if (l.includes('brazil')) return 'brazil';
+  if (l.includes('netherlands')) return 'netherlands';
+  if (l.includes('ireland')) return 'ireland';
+  const clean = slugify(l).slice(0, 20).replace(/^-+|-+$/g, '');
+  return clean || 'anywhere';
+}
+
+export function getWorkplaceSlug(job: { location?: string; title?: string }): 'remote' | 'onsite' | 'hybrid' {
+  const text = `${job.location || ''} ${job.title || ''}`.toLowerCase();
+  if (text.includes('onsite') || text.includes('on-site') || text.includes('in-office')) return 'onsite';
+  if (text.includes('hybrid')) return 'hybrid';
+  return 'remote';
+}
+
+export function buildSeoJobSlug(job: {
+  title?: string;
+  company?: string;
+  location?: string;
+  job_type?: string;
+  salary_range?: string;
+  salary?: string;
+  salary_min?: number;
+  salary_max?: number;
+  id?: string;
+}): string {
+  const parts: string[] = [];
+
+  // 1. Job Title
+  const titleSlug = slugify(job.title || 'remote-job');
+  parts.push(titleSlug);
+
+  // 2. Company Name
+  if (job.company && job.company !== 'Hiring Company') {
+    const compSlug = slugify(job.company);
+    if (compSlug && !titleSlug.includes(compSlug)) {
+      parts.push(compSlug);
+    }
+  }
+
+  // 3. Workplace Type ('remote', 'onsite', 'hybrid')
+  const wp = getWorkplaceSlug(job);
+  if (!titleSlug.includes(wp)) {
+    parts.push(wp);
+  }
+
+  // 4. Country / Anywhere
+  const locSlug = formatLocationSlug(job.location);
+  if (locSlug && !titleSlug.includes(locSlug) && !parts.includes(locSlug)) {
+    parts.push(locSlug);
+  }
+
+  // 5. Job Type (full-time, contract, part-time, internship)
+  const type = (job.job_type || '').toLowerCase();
+  if (type.includes('part')) parts.push('part-time');
+  else if (type.includes('contract') || type.includes('freelance')) parts.push('contract');
+  else if (type.includes('intern')) parts.push('internship');
+  else if (!titleSlug.includes('full-time')) parts.push('full-time');
+
+  // 6. Salary if available
+  const salarySlug = formatSalarySlug(job);
+  if (salarySlug) {
+    parts.push(salarySlug);
+  }
+
+  return parts.join('-');
+}
+
+export function getJobSlug(job: Partial<RemoteJob> | any): string {
+  if (job?.slug && job.slug !== 'job' && job.slug !== 'remote-job') return job.slug;
+  return buildSeoJobSlug(job);
 }
 
 export function mapJobRow(row: any): RemoteJob {
@@ -81,7 +199,7 @@ export function mapJobRow(row: any): RemoteJob {
     status: row.status || 'active',
     created_at: row.created_at || new Date().toISOString(),
     posted_timestamp: row.posted_timestamp || undefined,
-    slug: row.slug || slugify(title),
+    slug: buildSeoJobSlug(row),
   };
 }
 
