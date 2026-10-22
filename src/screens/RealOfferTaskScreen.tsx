@@ -26,7 +26,7 @@ interface Props {
   userId: string;
   task: MicroJobItem;
   onBack: () => void;
-  onCompleted?: () => void;
+  onCompleted?: (newBalance?: number) => void;
 }
 
 export const RealOfferTaskScreen: React.FC<Props> = ({
@@ -97,7 +97,7 @@ export const RealOfferTaskScreen: React.FC<Props> = ({
           {
             text: 'Great!',
             onPress: () => {
-              onCompleted?.();
+              onCompleted?.(res.newBalance);
               onBack();
             },
           },

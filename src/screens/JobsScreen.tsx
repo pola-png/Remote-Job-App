@@ -108,7 +108,12 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
         userId={userId}
         task={activeTaskView}
         onBack={() => setActiveTaskView(null)}
-        onCompleted={() => loadData(true)}
+        onCompleted={(newBal) => {
+          if (typeof newBal === 'number') {
+            setBalance(newBal);
+          }
+          loadData(true);
+        }}
       />
     );
   }

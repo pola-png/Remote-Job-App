@@ -241,12 +241,10 @@ export const JobsService = {
    */
   async getBalance(userId: string, forceRefresh: boolean = false): Promise<number> {
     const cacheKey = `creator_balance_${userId}`;
+    const cached = await MemoryAndDiskCache.get<number>(cacheKey, 1000 * 60 * 30); // 30 min cache
 
-    if (!forceRefresh) {
-      const cached = await MemoryAndDiskCache.get<number>(cacheKey, 1000 * 60 * 30); // 30 min cache
-      if (cached !== null && cached !== undefined) {
-        return cached;
-      }
+    if (!forceRefresh && cached !== null && cached !== undefined) {
+      return cached;
     }
 
     try {
@@ -258,23 +256,17 @@ export const JobsService = {
 
       if (data && !error) {
         const val = Number(data.available_balance_usd ?? data.balance_usd ?? 0);
-        await MemoryAndDiskCache.set(cacheKey, val);
-        return val;
+        // Take the highest of remote and local cache to prevent race condition if remote write was delayed
+        const bestVal = Math.max(val, cached ?? 0);
+        await MemoryAndDiskCache.set(cacheKey, bestVal);
+        return bestVal;
       }
 
-      try {
-        await supabase.from('creator_balances').upsert({
-          creator_id: userId,
-          balance_usd: 0.0,
-          available_balance_usd: 0.0,
-          updated_at: new Date().toISOString(),
-        });
-      } catch (_) {}
-
-      await MemoryAndDiskCache.set(cacheKey, 0);
-      return 0;
+      // If remote returned nothing/error, preserve user's cached earnings!
+      const fallback = cached ?? MemoryAndDiskCache.getInMemory<number>(cacheKey) ?? 0;
+      return fallback;
     } catch (_) {
-      const fallback = MemoryAndDiskCache.getInMemory<number>(cacheKey) ?? 0;
+      const fallback = cached ?? MemoryAndDiskCache.getInMemory<number>(cacheKey) ?? 0;
       return fallback;
     }
   },
@@ -341,17 +333,17 @@ export const JobsService = {
       await MemoryAndDiskCache.set(cacheKey, updatedBalance);
       await this.markTaskCompletedLocally(task.id);
 
-      // Asynchronously sync to Supabase creator_balances in background
-      (async () => {
-        try {
-          await supabase.from('creator_balances').upsert({
-            creator_id: userId,
-            balance_usd: updatedBalance,
-            available_balance_usd: updatedBalance,
-            updated_at: new Date().toISOString(),
-          });
-        } catch (_) {}
-      })();
+      // Sync to Supabase creator_balances
+      try {
+        await supabase.from('creator_balances').upsert({
+          creator_id: userId,
+          balance_usd: updatedBalance,
+          available_balance_usd: updatedBalance,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('creator_balances upsert error (kept local):', err);
+      }
 
       // Record in monetization events ledger in background
       (async () => {
