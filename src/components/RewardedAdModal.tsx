@@ -17,6 +17,7 @@ import {
   Award,
 } from './LucideIcons';
 import { UnifiedAdService } from '../services/ads';
+import { AdTierService } from '../services/adTierService';
 
 interface Props {
   visible: boolean;

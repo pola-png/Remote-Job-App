@@ -312,6 +312,11 @@ export default async function JobDetailPage({ params }: Props) {
               rel="noopener noreferrer"
               className="btn-primary"
               style={{ fontSize: '1.1rem', padding: '0.9rem 2.2rem' }}
+              data-interact-trigger
+              data-tool-id="67493"
+              data-tool-slug="suMfPdJ"
+              data-title-mode="dynamic"
+              data-subid="remote_web"
             >
               Apply for this position <ExternalLink size={18} />
             </a>
@@ -363,6 +368,11 @@ export default async function JobDetailPage({ params }: Props) {
               rel="noopener noreferrer"
               className="btn-primary"
               style={{ fontSize: '1.1rem', padding: '0.9rem 2.5rem' }}
+              data-interact-trigger
+              data-tool-id="67493"
+              data-tool-slug="suMfPdJ"
+              data-title-mode="dynamic"
+              data-subid="remote_web"
             >
               Apply on Company Website <ExternalLink size={18} />
             </a>

@@ -42,6 +42,7 @@ import { PostJobScreen } from './src/screens/PostJobScreen';
 import { SubscriptionPlansScreen } from './src/screens/SubscriptionPlansScreen';
 import { InAppNotificationBanner } from './src/components/InAppNotificationBanner';
 import mobileAds from 'react-native-google-mobile-ads';
+import { AdTierService } from './src/services/adTierService';
 import { SubscriptionTier } from './src/services/subscription';
 
 type TabType =
@@ -159,25 +160,40 @@ export default function App() {
       }
     });
 
-    // Initialize Google Mobile Ads SDK on startup & preload ads
-    mobileAds()
-      .initialize()
-      .then((adapterStatuses) => {
-        console.log('Google Mobile Ads Initialized Successfully:', adapterStatuses);
-        const { AdMobService } = require('./src/services/admob');
-        // Preload ads in background for instant playback
-        AdMobService.preloadRewardedAd();
-        AdMobService.preloadAppOpenAd();
-        // Show App Open Ad on cold startup (handled seamlessly via preload waiter)
-        AdMobService.showAppOpenAd();
-      })
-      .catch((err) => {
-        console.warn('Google Mobile Ads Init Warning:', err);
-      });
+    // Initialize appropriate ad network on startup based on Tier:
+    // Tier 1 & 2 -> AdMob + Pangle
+    // Tier 3 -> InMobi (AdMob completely blocked)
+    AdTierService.isAdMobAllowed().then((isAllowed) => {
+      if (!isAllowed) {
+        console.log(
+          '[Ad Gateway] Tier 3 country detected. Blocking AdMob completely and initializing InMobi SDK...'
+        );
+        const { InMobiService } = require('./src/services/inmobi');
+        InMobiService.initialize().then((ok: boolean) => {
+          console.log('[InMobi Startup] Native InMobi SDK init result:', ok);
+        });
+        return;
+      }
 
-    // Listen for app coming to foreground / resume to display App Open Ad
+      mobileAds()
+        .initialize()
+        .then((adapterStatuses) => {
+          console.log('Google Mobile Ads Initialized Successfully:', adapterStatuses);
+          const { AdMobService } = require('./src/services/admob');
+          // Preload ads in background for instant playback
+          AdMobService.preloadRewardedAd();
+          AdMobService.preloadAppOpenAd();
+          // Show App Open Ad on cold startup (handled seamlessly via preload waiter)
+          AdMobService.showAppOpenAd();
+        })
+        .catch((err) => {
+          console.warn('Google Mobile Ads Init Warning:', err);
+        });
+    });
+
+    // Listen for app coming to foreground / resume to display App Open Ad (Tier 1 & 2 only)
     const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
+      if (nextAppState === 'active' && AdTierService.isAdMobAllowedSync()) {
         const { AdMobService } = require('./src/services/admob');
         AdMobService.showAppOpenAd();
       }
@@ -194,7 +210,9 @@ export default function App() {
       async (data: any) => {
         const title = data.title || 'Remote Job Alert';
         const body = data.body || 'New opportunities are live.';
-        const targetScreen = data.targetScreen as TabType;
+        const targetScreen = (['REMOTE_JOBS', 'MICRO_JOBS', 'PAYOUT', 'POLICY'].includes(data.targetScreen)
+          ? data.targetScreen
+          : undefined) as 'REMOTE_JOBS' | 'MICRO_JOBS' | 'PAYOUT' | 'POLICY' | undefined;
 
         const notif = await NotificationService.triggerInAppNotification(
           title,

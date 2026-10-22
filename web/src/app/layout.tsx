@@ -65,7 +65,6 @@ export const metadata: Metadata = {
   verification: {
     google: 'f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc',
     other: {
-      monetag: '3ba7674718137c812899fbff9b92504c',
       'google-adsense-account': 'ca-pub-3004467059794580',
     },
   },
@@ -87,13 +86,6 @@ export default function RootLayout({
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3004467059794580"
           crossOrigin="anonymous"
-        />
-        <meta name="monetag" content="3ba7674718137c812899fbff9b92504c" />
-        <script
-          src="https://quge5.com/88/tag.min.js"
-          data-zone="294143"
-          async
-          data-cfasync="false"
         />
         <meta name="google-site-verification" content="f4X0tMifV0LsE0L8VXngAUCPyM6NY8INP4mRO5wr1Fc" />
         <link rel="canonical" href="https://remotejobshq.online" />
@@ -192,6 +184,14 @@ export default function RootLayout({
         </footer>
 
         <CookieConsent />
+
+        {/* CPAlead Overlay Link & File Locker Script (Publisher ID: 3367742) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.CPAlead_PublisherUserId = 3367742;`,
+          }}
+        />
+        <script src="https://cdnflair.com/js/interact-form.js" async defer />
       </body>
     </html>
   );

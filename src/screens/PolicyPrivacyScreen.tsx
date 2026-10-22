@@ -15,12 +15,14 @@ import {
   LogOut,
   ChevronRight,
   User,
+  TrendingUp,
 } from '../components/LucideIcons';
 import { AuthService, UserProfile } from '../services/auth';
 import { PrivacyPolicyScreen } from './PrivacyPolicyScreen';
 import { TermsOfServiceScreen } from './TermsOfServiceScreen';
 import { SafetyStandardsScreen } from './SafetyStandardsScreen';
 import { AccountDeletionScreen } from './AccountDeletionScreen';
+import { AdvertiseWithUsModal } from '../components/AdvertiseWithUsModal';
 
 interface Props {
   profile: UserProfile | null;
@@ -40,6 +42,7 @@ export const PolicyPrivacyScreen: React.FC<Props> = ({
   const [activePolicy, setActivePolicy] = useState<PolicyKey | null>(
     initialPolicy || null
   );
+  const [showAdvertiseModal, setShowAdvertiseModal] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of Remote jobs?', [
@@ -175,6 +178,24 @@ export const PolicyPrivacyScreen: React.FC<Props> = ({
             </View>
             <ChevronRight color="#64748B" size={18} />
           </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          {/* Advertise With Us direct email channel */}
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => setShowAdvertiseModal(true)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.menuIconBg, { backgroundColor: '#0C4A6E' }]}>
+              <TrendingUp color="#38BDF8" size={20} />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>Advertise With Us</Text>
+              <Text style={styles.menuSubtitle}>Direct in-app sponsor & advertiser inquiries</Text>
+            </View>
+            <ChevronRight color="#64748B" size={18} />
+          </TouchableOpacity>
         </View>
 
         {/* Section Header */}
@@ -189,6 +210,12 @@ export const PolicyPrivacyScreen: React.FC<Props> = ({
         </TouchableOpacity>
 
         <Text style={styles.versionText}>Remote jobs • React Native Edition • v1.0.0</Text>
+
+        {/* Advertise Modal */}
+        <AdvertiseWithUsModal
+          visible={showAdvertiseModal}
+          onClose={() => setShowAdvertiseModal(false)}
+        />
       </ScrollView>
     </View>
   );

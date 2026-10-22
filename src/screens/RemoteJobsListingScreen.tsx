@@ -46,6 +46,7 @@ import { JobMatchScoreBadge } from '../components/JobMatchScoreBadge';
 import { CompanyLogoAvatar } from '../components/CompanyLogoAvatar';
 import { BannerAdView } from '../components/BannerAdView';
 import { NativeAdCard } from '../components/NativeAdCard';
+import { AdTierService } from '../services/adTierService';
 
 interface Props {
   userId: string;
@@ -206,13 +207,17 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
 
   // Called when user taps a Job Card or "View Details & Apply"
   const handleOpenJobDetails = (job: RemoteJob) => {
-    // If user has Pro/Premium tier or has already unlocked this job
-    if (SubscriptionService.isAdFree(userSubscription.tier) || unlockedJobIds.includes(job.id)) {
+    // If user has Pro/Premium tier, already unlocked, or is in Tier 3 (AdMob blocked)
+    if (
+      SubscriptionService.isAdFree(userSubscription.tier) ||
+      unlockedJobIds.includes(job.id) ||
+      !AdTierService.isAdMobAllowedSync()
+    ) {
       setSelectedJob(job);
       return;
     }
 
-    // Free user: prompt rewarded sponsor ad before opening job details
+    // Free user in Tier 1/2: prompt rewarded sponsor ad before opening job details
     setPendingJobForAd(job);
     setShowRewardedAdModal(true);
   };

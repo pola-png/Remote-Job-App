@@ -91,8 +91,8 @@ android {
         applicationId 'com.xapzap.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 64
-        versionName "30.0.19"
+        versionCode 65
+        versionName "30.0.20"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
@@ -213,6 +213,15 @@ dependencies {
 
     // Google AdMob Pangle Mediation Adapter (AdMob 1st, Pangle fallback)
     implementation 'com.google.ads.mediation:pangle:6.4.0.6.0'
+
+    // InMobi Native Android SDK (Designated network for direct Tier 3 monetization)
+    // Documentation: https://support.inmobi.com/monetize/sdk-documentation/download-sdk
+    implementation 'com.inmobi.monetization:inmobi-ads-kotlin:10.8.0'
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'com.squareup.picasso:picasso:2.71828'
+
+    // Google AdMob InMobi Mediation Adapter
+    implementation 'com.google.ads.mediation:inmobi:10.8.0.0'
 }
 
 apply plugin: "com.google.gms.google-services"

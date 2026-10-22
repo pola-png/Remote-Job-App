@@ -1,181 +1,247 @@
 import { supabase } from '../config/supabase';
 import { MemoryAndDiskCache } from './cache';
+import { CPAGRIP_CONFIG } from '../config/cpagrip';
+import { CPALEAD_CONFIG } from '../config/cpalead';
+
+export type TaskCategory = 'SURVEY' | 'APP_INSTALL' | 'WEBSITE' | 'VIDEO' | 'AI_DATA' | 'OTHER';
 
 export interface MicroJobItem {
   id: string;
   title: string;
-  category: 'AI_DATA' | 'WEBSITE' | 'VIDEO' | 'SURVEY';
+  category: TaskCategory;
   rewardUsd: number;
+  points?: number; // CPAlead points (100 points per $1.00 payout)
   durationSeconds: number;
   description: string;
   actionUrl?: string;
+  photoUrl?: string;
+  acceptedCountries?: string;
   isCompleted?: boolean;
+  network?: 'CPAGRIP' | 'CPALEAD' | 'DIRECT';
 }
 
-const DEFAULT_JOBS: MicroJobItem[] = [
-  // 1. AI Data Annotation & Training Tasks
-  {
-    id: 'ai_task_1',
-    title: 'AI Data Annotation: Sentiment & Tone Verification',
-    category: 'AI_DATA',
-    rewardUsd: 0.35,
-    durationSeconds: 45,
-    description: 'Evaluate conversational AI sample outputs and verify safety and tone consistency.',
-  },
-  {
-    id: 'ai_task_2',
-    title: 'Visual Quality & Object Labeling Test',
-    category: 'AI_DATA',
-    rewardUsd: 0.45,
-    durationSeconds: 60,
-    description: 'Verify bounding tags for generative model synthetic image benchmarks.',
-  },
-  {
-    id: 'ai_task_3',
-    title: 'Code Completion & Syntax Accuracy Audit',
-    category: 'AI_DATA',
-    rewardUsd: 0.60,
-    durationSeconds: 50,
-    description: 'Review LLM code suggestions for Python and TypeScript snippet correctness.',
-  },
-  {
-    id: 'ai_task_4',
-    title: 'Medical Terminology & Safety Guardrail Check',
-    category: 'AI_DATA',
-    rewardUsd: 0.75,
-    durationSeconds: 70,
-    description: 'Verify AI assistant health disclaimer responses against ethical guidelines.',
-  },
-  {
-    id: 'ai_task_5',
-    title: 'Audio Speech-to-Text Transcription Verification',
-    category: 'AI_DATA',
-    rewardUsd: 0.40,
-    durationSeconds: 40,
-    description: 'Listen to 10-second audio clips and confirm automated transcription fidelity.',
-  },
-  {
-    id: 'ai_task_6',
-    title: 'Multimodal Chatbot Intent Classification',
-    category: 'AI_DATA',
-    rewardUsd: 0.50,
-    durationSeconds: 55,
-    description: 'Categorize customer support conversational queries into target API intents.',
-  },
+const CACHE_KEY_CPAGRIP = 'cpagrip_live_offers_v1';
+const CACHE_KEY_CPALEAD = 'cpalead_live_offers_v1';
+export const CACHE_TTL_MS = 1000 * 60 * 15; // 15 minutes cache
 
-  // 2. Website & Platform Exploration Tasks
-  {
-    id: 'web_task_1',
-    title: 'Visit & Verify Sponsor Landing Page',
-    category: 'WEBSITE',
-    rewardUsd: 0.20,
-    durationSeconds: 20,
-    description: 'Browse the partner cloud portal for 20 seconds and confirm page load responsiveness.',
-    actionUrl: 'https://google.com',
-  },
-  {
-    id: 'web_task_2',
-    title: 'Fintech Platform UI & Navigation Audit',
-    category: 'WEBSITE',
-    rewardUsd: 0.35,
-    durationSeconds: 30,
-    description: 'Explore the dashboard layout and test interactive chart components.',
-    actionUrl: 'https://stripe.com',
-  },
-  {
-    id: 'web_task_3',
-    title: 'E-Commerce Store Checkout Flow Speed Test',
-    category: 'WEBSITE',
-    rewardUsd: 0.40,
-    durationSeconds: 35,
-    description: 'Navigate products, add an item to cart, and verify payment screen rendering.',
-    actionUrl: 'https://shopify.com',
-  },
-  {
-    id: 'web_task_4',
-    title: 'SaaS Developer Documentation Usability Check',
-    category: 'WEBSITE',
-    rewardUsd: 0.30,
-    durationSeconds: 25,
-    description: 'Inspect API endpoints documentation and confirm sample code readability.',
-    actionUrl: 'https://supabase.com',
-  },
-  {
-    id: 'web_task_5',
-    title: 'Remote Collaboration Tool Feature Tour',
-    category: 'WEBSITE',
-    rewardUsd: 0.25,
-    durationSeconds: 20,
-    description: 'Visit the collaboration suite demo page and verify interactive video tour.',
-    actionUrl: 'https://slack.com',
-  },
+/**
+ * Format accepted countries cleanly to prevent horizontal layout distortion
+ */
+export function formatAcceptedCountries(raw: string[] | string | undefined): string | undefined {
+  if (!raw) return undefined;
+  let list: string[] = [];
+  if (Array.isArray(raw)) {
+    list = raw.map((c) => String(c).trim().toUpperCase()).filter(Boolean);
+  } else {
+    list = String(raw)
+      .split(/[,|\s/]+/)
+      .map((c) => c.trim().toUpperCase())
+      .filter((c) => Boolean(c) && c !== 'AND');
+  }
 
-  // 3. Video & Media Review Tasks
-  {
-    id: 'video_task_1',
-    title: 'Watch & Review Creator Promotional Video',
-    category: 'VIDEO',
-    rewardUsd: 0.30,
-    durationSeconds: 30,
-    description: 'Watch sponsor video in full and submit feedback on audio clarity and visual pacing.',
-  },
-  {
-    id: 'video_task_2',
-    title: 'Tech Product Unboxing & Quality Review',
-    category: 'VIDEO',
-    rewardUsd: 0.45,
-    durationSeconds: 45,
-    description: 'Watch high-resolution gadget preview and vote on lighting and narration quality.',
-  },
-  {
-    id: 'video_task_3',
-    title: 'Developer Tool Feature Demo Breakdown',
-    category: 'VIDEO',
-    rewardUsd: 0.55,
-    durationSeconds: 50,
-    description: 'Watch live coding session clip and confirm step-by-step clarity.',
-  },
-  {
-    id: 'video_task_4',
-    title: 'Mobile App Teaser & Gameplay Feedback',
-    category: 'VIDEO',
-    rewardUsd: 0.35,
-    durationSeconds: 35,
-    description: 'Review 30-second mobile app showcase clip and rate user onboarding hook.',
-  },
-
-  // 4. Surveys & Tech Feedback Tasks
-  {
-    id: 'survey_task_1',
-    title: 'Remote Workforce Tech Stack Survey',
-    category: 'SURVEY',
-    rewardUsd: 0.60,
-    durationSeconds: 60,
-    description: 'Answer 5 multiple choice questions on your preferred remote developer tooling and IDEs.',
-  },
-  {
-    id: 'survey_task_2',
-    title: 'AI Coding Assistant Usage & Productivity Pulse',
-    category: 'SURVEY',
-    rewardUsd: 0.70,
-    durationSeconds: 65,
-    description: 'Share your feedback on AI code autocompletion and agentic workflows.',
-  },
-  {
-    id: 'survey_task_3',
-    title: 'Global Remote Salary & Benefits Preferences',
-    category: 'SURVEY',
-    rewardUsd: 0.85,
-    durationSeconds: 75,
-    description: 'Help benchmark global remote compensation, equity packages, and wellness perks.',
-  },
-];
+  if (list.length === 0) return undefined;
+  if (
+    list.length >= 8 ||
+    list.includes('ALL') ||
+    list.includes('GLOBAL') ||
+    list.includes('ALL_DEVICES') ||
+    list.includes('WORLDWIDE')
+  ) {
+    return 'Global';
+  }
+  if (list.length > 2) {
+    return `${list[0]}, ${list[1]} +${list.length - 2}`;
+  }
+  return list.join(', ');
+}
 
 export const JobsService = {
+  /**
+   * Fetch live CPA micro-tasks directly from CPAGrip JSON Feed using the public key.
+   * Eliminates all mock/fake data.
+   */
+  async fetchLiveCpaGripOffers(userId: string, forceRefresh: boolean = false): Promise<MicroJobItem[]> {
+    if (!forceRefresh) {
+      const cached = await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPAGRIP, CACHE_TTL_MS);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        return cached;
+      }
+    }
+
+    const feedUrl = CPAGRIP_CONFIG.getClientFeedUrl(userId, CPAGRIP_CONFIG.DEFAULT_LIMIT);
+    console.log(`[CPAGrip] Fetching real live offer feed for user: ${userId}...`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(feedUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`CPAGrip feed returned HTTP ${response.status}`);
+      }
+
+      const json = await response.json();
+      const rawOffers = json?.offers;
+
+      if (!rawOffers || !Array.isArray(rawOffers) || rawOffers.length === 0) {
+        console.log('[CPAGrip] No offers returned for this visitor IP/country.');
+        return [];
+      }
+
+      const mappedOffers: MicroJobItem[] = rawOffers.map((offer: any) => {
+        const parsedPayout = parseFloat(offer.payout);
+        const rewardUsd = isNaN(parsedPayout) || parsedPayout <= 0 ? 0.20 : parsedPayout;
+        const points = CPALEAD_CONFIG.usdToPoints(rewardUsd);
+
+        let category: TaskCategory = 'SURVEY';
+        const rawCat = (offer.category || '').toLowerCase();
+        if (rawCat.includes('install') || rawCat.includes('mobile') || rawCat.includes('app') || rawCat.includes('download')) {
+          category = 'APP_INSTALL';
+        } else if (rawCat.includes('pin') || rawCat.includes('credit') || rawCat.includes('trial') || rawCat.includes('purchase')) {
+          category = 'WEBSITE';
+        } else if (rawCat.includes('video') || rawCat.includes('stream')) {
+          category = 'VIDEO';
+        } else {
+          category = 'SURVEY';
+        }
+
+        const durationSeconds = Math.min(60, Math.max(25, Math.round(rewardUsd * 80)));
+
+        return {
+          id: `cpagrip_${offer.offer_id}`,
+          title: offer.title ? String(offer.title).trim() : 'Complete Partner Task',
+          category,
+          rewardUsd,
+          points,
+          durationSeconds,
+          description: offer.description
+            ? String(offer.description).trim()
+            : 'Complete the verified sponsor requirements to claim reward.',
+          actionUrl: String(offer.offerlink || '').trim(),
+          photoUrl: offer.offerphoto ? String(offer.offerphoto).trim() : undefined,
+          acceptedCountries: formatAcceptedCountries(offer.accepted_countries),
+          network: 'CPAGRIP',
+          isCompleted: false,
+        };
+      });
+
+      await MemoryAndDiskCache.set(CACHE_KEY_CPAGRIP, mappedOffers);
+      console.log(`[CPAGrip] Successfully loaded ${mappedOffers.length} real offers.`);
+      return mappedOffers;
+    } catch (err) {
+      console.warn('[CPAGrip] Failed to fetch live feed:', err);
+      const cached = await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPAGRIP, 1000 * 60 * 60 * 24);
+      return cached || [];
+    }
+  },
+
+  /**
+   * Fetch live CPA micro-tasks from CPAlead API using Publisher ID 3367742.
+   * Real live partner offers with 100 points per $1.00 USD.
+   */
+  async fetchLiveCpaLeadOffers(userId: string, forceRefresh: boolean = false): Promise<MicroJobItem[]> {
+    if (!forceRefresh) {
+      const cached = await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPALEAD, CACHE_TTL_MS);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        return cached;
+      }
+    }
+
+    const feedUrl = CPALEAD_CONFIG.getOffersUrl(userId, CPALEAD_CONFIG.DEFAULT_LIMIT);
+    console.log(`[CPAlead] Fetching real live offer feed for user: ${userId}...`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(feedUrl, {
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`CPAlead feed returned HTTP ${response.status}`);
+      }
+
+      const json = await response.json();
+      const rawOffers = json?.offers;
+
+      if (!rawOffers || !Array.isArray(rawOffers) || rawOffers.length === 0) {
+        console.log('[CPAlead] No offers returned for this visitor IP/country.');
+        return [];
+      }
+
+      const mappedOffers: MicroJobItem[] = rawOffers.map((offer: any) => {
+        const rewardUsd = typeof offer.amount === 'number' && offer.amount > 0 ? offer.amount : 0.15;
+        const points = CPALEAD_CONFIG.usdToPoints(rewardUsd);
+
+        let category: TaskCategory = 'SURVEY';
+        const typeStr = (offer.payout_type || '').toUpperCase();
+        const descStr = ((offer.title || '') + ' ' + (offer.description || '') + ' ' + (offer.conversion || '')).toLowerCase();
+
+        if (typeStr === 'CPI' || descStr.includes('install') || descStr.includes('download') || descStr.includes('app')) {
+          category = 'APP_INSTALL';
+        } else if (descStr.includes('register') || descStr.includes('sign up') || descStr.includes('enter to win') || descStr.includes('entry')) {
+          category = 'WEBSITE';
+        } else if (descStr.includes('survey') || descStr.includes('quiz') || descStr.includes('opinion')) {
+          category = 'SURVEY';
+        } else if (descStr.includes('video') || descStr.includes('watch')) {
+          category = 'VIDEO';
+        } else {
+          category = 'OTHER';
+        }
+
+        const durationSeconds = Math.min(60, Math.max(25, Math.round(rewardUsd * 80)));
+        const photoUrl = offer.creatives?.url || offer.creatives?.og_image || undefined;
+
+        return {
+          id: `cpalead_${offer.id}`,
+          title: offer.title ? String(offer.title).trim() : 'Complete CPAlead Task',
+          category,
+          rewardUsd,
+          points,
+          durationSeconds,
+          description: offer.conversion
+            ? String(offer.conversion).trim()
+            : offer.description
+            ? String(offer.description).trim()
+            : CPALEAD_CONFIG.INSTRUCTIONS,
+          actionUrl: String(offer.link || '').trim(),
+          photoUrl,
+          acceptedCountries: formatAcceptedCountries(offer.countries),
+          network: 'CPALEAD',
+          isCompleted: false,
+        };
+      });
+
+      await MemoryAndDiskCache.set(CACHE_KEY_CPALEAD, mappedOffers);
+      console.log(`[CPAlead] Successfully loaded ${mappedOffers.length} real offers.`);
+      return mappedOffers;
+    } catch (err) {
+      console.warn('[CPAlead] Failed to fetch live feed:', err);
+      const cached = await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPALEAD, 1000 * 60 * 60 * 24);
+      return cached || [];
+    }
+  },
+
+  /**
+   * Get user creator balance
+   */
   async getBalance(userId: string, forceRefresh: boolean = false): Promise<number> {
     const cacheKey = `creator_balance_${userId}`;
 
-    // 1. Check ultra-fast memory and disk cache first (zero network egress)
     if (!forceRefresh) {
       const cached = await MemoryAndDiskCache.get<number>(cacheKey, 1000 * 60 * 30); // 30 min cache
       if (cached !== null && cached !== undefined) {
@@ -184,7 +250,6 @@ export const JobsService = {
     }
 
     try {
-      // 2. Query creator_balances table matching SQL schema
       const { data, error } = await supabase
         .from('creator_balances')
         .select('available_balance_usd, balance_usd')
@@ -197,7 +262,6 @@ export const JobsService = {
         return val;
       }
 
-      // Initialize row in creator_balances if not present
       try {
         await supabase.from('creator_balances').upsert({
           creator_id: userId,
@@ -215,18 +279,58 @@ export const JobsService = {
     }
   },
 
-  async getJobs(userId: string): Promise<MicroJobItem[]> {
+  /**
+   * Get active micro-tasks for user exclusively from CPAlead, including High-Paying Link Locker task.
+   * Eliminates CPAGrip to ensure 100% of impressions/clicks count towards the $25 publisher quota.
+   */
+  async getJobs(userId: string, forceRefresh: boolean = false): Promise<MicroJobItem[]> {
     try {
-      const completedList = await this.getCompletedTaskIds();
-      return DEFAULT_JOBS.map((job) => ({
-        ...job,
-        isCompleted: completedList.includes(job.id),
-      }));
+      const [cpaleadResult, completedList] = await Promise.all([
+        this.fetchLiveCpaLeadOffers(userId, forceRefresh).catch(() => [] as MicroJobItem[]),
+        this.getCompletedTaskIds(),
+      ]);
+
+      // High-Paying CPAlead Link Locker Offer (Tool 67493 / Slug suMfPdJ)
+      const lockerTaskId = `cpalead_locker_${CPALEAD_CONFIG.LOCKER.TOOL_ID}`;
+      const premiumLockerTask: MicroJobItem = {
+        id: lockerTaskId,
+        title: CPALEAD_CONFIG.LOCKER.TITLE,
+        category: 'SURVEY',
+        rewardUsd: CPALEAD_CONFIG.LOCKER.HIGH_PAYING_REWARD_USD,
+        points: CPALEAD_CONFIG.LOCKER.HIGH_PAYING_POINTS,
+        durationSeconds: 90,
+        description: CPALEAD_CONFIG.LOCKER.DESCRIPTION,
+        actionUrl: CPALEAD_CONFIG.LOCKER.getDirectUrl(userId),
+        network: 'CPALEAD',
+        acceptedCountries: 'Global',
+        isCompleted: completedList.includes(lockerTaskId),
+      };
+
+      // Prepend high-paying locker task at top of list
+      const merged: MicroJobItem[] = [premiumLockerTask, ...cpaleadResult];
+
+      // Deduplicate offers by unique id
+      const seenIds = new Set<string>();
+      const deduped: MicroJobItem[] = [];
+      for (const item of merged) {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          deduped.push({
+            ...item,
+            isCompleted: completedList.includes(item.id),
+          });
+        }
+      }
+
+      return deduped;
     } catch (_) {
-      return DEFAULT_JOBS;
+      return [];
     }
   },
 
+  /**
+   * Complete micro-task and credit user earnings
+   */
   async completeTask(userId: string, task: MicroJobItem): Promise<{ newBalance: number; success: boolean }> {
     try {
       const currentBalance = await this.getBalance(userId);
@@ -255,7 +359,7 @@ export const JobsService = {
           await supabase.from('monetization_events').insert({
             user_id: userId,
             event_type: task.category.toLowerCase(),
-            format: task.category.toLowerCase(),
+            format: task.network === 'CPALEAD' ? 'cpalead_offer' : 'cpagrip_offer',
             creator_earnings_micros: Math.round(task.rewardUsd * 1000000),
             created_at: new Date().toISOString(),
           });
@@ -268,21 +372,27 @@ export const JobsService = {
     }
   },
 
+  /**
+   * Completed task IDs stored locally
+   */
   async getCompletedTaskIds(): Promise<string[]> {
     try {
-      const cached = await MemoryAndDiskCache.get<string[]>('completed_tasks_v1', 1000 * 60 * 60 * 24 * 7);
+      const cached = await MemoryAndDiskCache.get<string[]>('completed_tasks_v2', 1000 * 60 * 60 * 24 * 7);
       return cached || [];
     } catch (_) {
       return [];
     }
   },
 
+  /**
+   * Mark a task as completed locally
+   */
   async markTaskCompletedLocally(taskId: string): Promise<void> {
     try {
       const existing = await this.getCompletedTaskIds();
       if (!existing.includes(taskId)) {
         existing.push(taskId);
-        await MemoryAndDiskCache.set('completed_tasks_v1', existing);
+        await MemoryAndDiskCache.set('completed_tasks_v2', existing);
       }
     } catch (_) {}
   },

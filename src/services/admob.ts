@@ -7,6 +7,7 @@ import {
   TestIds,
 } from 'react-native-google-mobile-ads';
 import { ADMOB_CONFIG } from '../config/admob';
+import { AdTierService } from './adTierService';
 
 export interface AdRewardResult {
   rewardEarned: boolean;
@@ -33,6 +34,7 @@ export const AdMobService = {
   },
 
   getRewardedAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.REWARDED;
     }
@@ -40,6 +42,7 @@ export const AdMobService = {
   },
 
   getInterstitialAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.INTERSTITIAL;
     }
@@ -47,6 +50,7 @@ export const AdMobService = {
   },
 
   getAppOpenAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.APP_OPEN;
     }
@@ -54,6 +58,7 @@ export const AdMobService = {
   },
 
   getBannerAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.BANNER;
     }
@@ -61,6 +66,7 @@ export const AdMobService = {
   },
 
   getNativeAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.BANNER;
     }
@@ -68,6 +74,7 @@ export const AdMobService = {
   },
 
   getRewardedInterstitialAdUnitId(): string {
+    if (!AdTierService.isAdMobAllowedSync()) return '';
     if (__DEV__ || ADMOB_CONFIG.TEST_MODE) {
       return TestIds.REWARDED_INTERSTITIAL;
     }
@@ -76,12 +83,20 @@ export const AdMobService = {
 
   /**
    * Preload App Open Ad in background for immediate launch / resume presentation
+   * Strictly disabled for Tier 3 and unverified countries
    */
   preloadAppOpenAd(): void {
+    if (!AdTierService.isAdMobAllowedSync()) {
+      return;
+    }
     if (isAppOpenReady || isAppOpenLoading) return;
     isAppOpenLoading = true;
 
     const adUnitId = this.getAppOpenAdUnitId();
+    if (!adUnitId) {
+      isAppOpenLoading = false;
+      return;
+    }
     try {
       console.log('AdMob: Preloading App Open Ad with unit ID:', adUnitId);
       const appOpen = AppOpenAd.createForAdRequest(adUnitId, {
@@ -120,8 +135,12 @@ export const AdMobService = {
 
   /**
    * Request and show App Open Ad on app launch / resume
+   * Returns false immediately if user is in Tier 3
    */
   async showAppOpenAd(): Promise<boolean> {
+    if (!AdTierService.isAdMobAllowedSync()) {
+      return false;
+    }
     const now = Date.now();
     // Do not show if another full-screen ad is active or if shown recently within cooldown window
     if (isAnyAdShowing) {
@@ -244,12 +263,20 @@ export const AdMobService = {
 
   /**
    * Preload Rewarded Ad in background for instant 0ms playback
+   * Strictly disabled for Tier 3 and unverified countries
    */
   preloadRewardedAd(): void {
+    if (!AdTierService.isAdMobAllowedSync()) {
+      return;
+    }
     if (isPreloadedReady || isPreloading) return;
     isPreloading = true;
 
     const adUnitId = this.getRewardedAdUnitId();
+    if (!adUnitId) {
+      isPreloading = false;
+      return;
+    }
     try {
       const rewarded = RewardedAd.createForAdRequest(adUnitId, {
         requestNonPersonalizedAdsOnly: false,
@@ -276,12 +303,25 @@ export const AdMobService = {
 
   /**
    * Request and show REAL Google AdMob Rewarded Video Ad with instant cache
+   * For Tier 3 regions, immediately grants the reward without calling AdMob
    */
   async showRewardedAd(
     onRewardEarned: (reward: AdRewardResult) => void,
     onDismissed?: () => void,
     onError?: (err: any) => void
   ): Promise<void> {
+    // Strictly gate against Tier 3: Zero AdMob network requests
+    if (!AdTierService.isAdMobAllowedSync()) {
+      console.log('[AdMob Gated] Tier 3 region: Zero ad network requests. Granting immediate unlock.');
+      onRewardEarned({
+        rewardEarned: true,
+        type: 'JOB_APPLICATION_UNLOCK',
+        amount: 1,
+      });
+      if (onDismissed) onDismissed();
+      return;
+    }
+
     // 1. If preloaded ad is ready in memory, show immediately with 0ms delay!
     if (preloadedRewarded && isPreloadedReady) {
       const activeAd = preloadedRewarded;
@@ -415,9 +455,15 @@ export const AdMobService = {
 
   /**
    * Request and show REAL Google AdMob Interstitial Ad
+   * Strictly disabled for Tier 3 and unverified countries
    */
   async showInterstitialAd(): Promise<boolean> {
+    if (!AdTierService.isAdMobAllowedSync()) {
+      return false;
+    }
     const adUnitId = this.getInterstitialAdUnitId();
+    if (!adUnitId) return false;
+
     return new Promise((resolve) => {
       try {
         const interstitial = InterstitialAd.createForAdRequest(adUnitId, {
@@ -455,151 +501,5 @@ export const AdMobService = {
       }
     });
   },
-
-  /**
-   * Preload App Open Ad in background for immediate launch / resume presentation
-   */
-  preloadAppOpenAd(): void {
-    if (isAppOpenReady || isAppOpenLoading) return;
-    isAppOpenLoading = true;
-
-    const adUnitId = this.getAppOpenAdUnitId();
-    try {
-      const appOpen = AppOpenAd.createForAdRequest(adUnitId, {
-        requestNonPersonalizedAdsOnly: false,
-      });
-
-      appOpen.addAdEventListener(AdEventType.LOADED, () => {
-        preloadedAppOpen = appOpen;
-        isAppOpenReady = true;
-        isAppOpenLoading = false;
-        console.log('AdMob App Open Ad preloaded and ready for presentation');
-      });
-
-      appOpen.addAdEventListener(AdEventType.ERROR, (error) => {
-        isAppOpenLoading = false;
-        isAppOpenReady = false;
-        preloadedAppOpen = null;
-        console.warn('AdMob App Open Ad preload error:', error);
-      });
-
-      appOpen.load();
-    } catch (err) {
-      isAppOpenLoading = false;
-      console.warn('AdMob App Open Ad preload exception:', err);
-    }
-  },
-
-  /**
-   * Request and show App Open Ad on app launch / resume
-   */
-  async showAppOpenAd(): Promise<boolean> {
-    const now = Date.now();
-    // Do not show if another full-screen ad is active or if shown recently within cooldown window
-    if (isAnyAdShowing) {
-      console.log('AdMob: Another ad is currently displaying, skipping App Open Ad');
-      return false;
-    }
-
-    if (now - lastAppOpenShowTime < APP_OPEN_COOLDOWN_MS) {
-      console.log('AdMob: App Open Ad cooldown period active, skipping');
-      return false;
-    }
-
-    // 1. If preloaded ad is already in memory, display immediately
-    if (preloadedAppOpen && isAppOpenReady) {
-      const activeAd = preloadedAppOpen;
-      preloadedAppOpen = null;
-      isAppOpenReady = false;
-      isAnyAdShowing = true;
-      lastAppOpenShowTime = now;
-
-      return new Promise<boolean>((resolve) => {
-        let unsubscribeClosed: (() => void) | null = null;
-        let unsubscribeError: (() => void) | null = null;
-
-        const cleanup = () => {
-          isAnyAdShowing = false;
-          if (unsubscribeClosed) unsubscribeClosed();
-          if (unsubscribeError) unsubscribeError();
-          // Preload next ad in background
-          setTimeout(() => this.preloadAppOpenAd(), 1000);
-        };
-
-        unsubscribeClosed = activeAd.addAdEventListener(AdEventType.CLOSED, () => {
-          cleanup();
-          resolve(true);
-        });
-
-        unsubscribeError = activeAd.addAdEventListener(AdEventType.ERROR, () => {
-          cleanup();
-          resolve(false);
-        });
-
-        activeAd.show().catch((err) => {
-          cleanup();
-          console.warn('AdMob: Failed to show preloaded App Open Ad:', err);
-          resolve(false);
-        });
-      });
-    }
-
-    // 2. Fallback: on-demand load with 3-second timeout
-    return new Promise<boolean>((resolve) => {
-      const adUnitId = this.getAppOpenAdUnitId();
-      let handled = false;
-
-      const timeout = setTimeout(() => {
-        if (!handled) {
-          handled = true;
-          this.preloadAppOpenAd();
-          resolve(false);
-        }
-      }, 3000);
-
-      try {
-        const appOpen = AppOpenAd.createForAdRequest(adUnitId, {
-          requestNonPersonalizedAdsOnly: false,
-        });
-
-        appOpen.addAdEventListener(AdEventType.LOADED, () => {
-          if (handled || isAnyAdShowing) return;
-          clearTimeout(timeout);
-          handled = true;
-          isAnyAdShowing = true;
-          lastAppOpenShowTime = Date.now();
-
-          appOpen.addAdEventListener(AdEventType.CLOSED, () => {
-            isAnyAdShowing = false;
-            setTimeout(() => this.preloadAppOpenAd(), 1000);
-            resolve(true);
-          });
-
-          appOpen.addAdEventListener(AdEventType.ERROR, () => {
-            isAnyAdShowing = false;
-            setTimeout(() => this.preloadAppOpenAd(), 1000);
-            resolve(false);
-          });
-
-          appOpen.show().catch(() => {
-            isAnyAdShowing = false;
-            resolve(false);
-          });
-        });
-
-        appOpen.addAdEventListener(AdEventType.ERROR, () => {
-          if (!handled) {
-            handled = true;
-            clearTimeout(timeout);
-            resolve(false);
-          }
-        });
-
-        appOpen.load();
-      } catch (_) {
-        clearTimeout(timeout);
-        resolve(false);
-      }
-    });
-  },
 };
+

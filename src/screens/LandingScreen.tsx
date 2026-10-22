@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -20,6 +20,7 @@ import {
 } from '../components/LucideIcons';
 import { BannerAdView } from '../components/BannerAdView';
 import { NativeAdCard } from '../components/NativeAdCard';
+import { AdvertiseWithUsModal } from '../components/AdvertiseWithUsModal';
 
 interface Props {
   onSelectRemoteJobs: () => void;
@@ -34,6 +35,8 @@ export const LandingScreen: React.FC<Props> = ({
   onNavigateToAuth,
   userEmail,
 }: Props) => {
+  const [showAdvertiseModal, setShowAdvertiseModal] = useState(false);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
@@ -136,6 +139,29 @@ export const LandingScreen: React.FC<Props> = ({
         {/* Real Adaptive Banner View (AdMob primary, Pangle mediation fallback, no mock ads) */}
         <BannerAdView placement="landing_bottom" />
 
+        {/* Advertise With Us Card / Direct In-App Sponsorship Inquiry */}
+        <TouchableOpacity
+          style={styles.advertiseCtaCard}
+          onPress={() => setShowAdvertiseModal(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.advertiseCtaIcon}>
+            <TrendingUp color="#38BDF8" size={18} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.advertiseCtaTitle}>Advertise With Us</Text>
+              <View style={styles.advertiseCtaBadge}>
+                <Text style={styles.advertiseCtaBadgeText}>Direct</Text>
+              </View>
+            </View>
+            <Text style={styles.advertiseCtaDesc}>
+              Reach 50k+ active job seekers & remote pros. Send proposals to ezekielxap@gmail.com
+            </Text>
+          </View>
+          <ArrowRight color="#38BDF8" size={16} />
+        </TouchableOpacity>
+
         {/* Trust Badges Footer */}
         <View style={styles.trustSection}>
           <View style={styles.trustItem}>
@@ -151,6 +177,12 @@ export const LandingScreen: React.FC<Props> = ({
             <Text style={styles.trustText}>Direct Payouts</Text>
           </View>
         </View>
+
+        {/* Advertise With Us Modal */}
+        <AdvertiseWithUsModal
+          visible={showAdvertiseModal}
+          onClose={() => setShowAdvertiseModal(false)}
+        />
       </ScrollView>
     </View>
   );
@@ -376,5 +408,47 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 11,
     fontWeight: '600',
+  },
+  advertiseCtaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  advertiseCtaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  advertiseCtaTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  advertiseCtaBadge: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  advertiseCtaBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  advertiseCtaDesc: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+    lineHeight: 15,
   },
 });

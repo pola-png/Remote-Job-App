@@ -26,6 +26,7 @@ class MainApplication : Application(), ReactApplication {
             packages.add(InAppUpdatePackage())
             packages.add(GooglePlayBillingPackage())
             packages.add(FirebasePushPackage())
+            packages.add(InMobiPackage())
             return packages
           }
 

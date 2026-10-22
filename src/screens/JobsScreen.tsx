@@ -9,6 +9,7 @@ import {
   Alert,
   BackHandler,
   ScrollView,
+  Image,
 } from 'react-native';
 import {
   Briefcase,
@@ -23,18 +24,19 @@ import {
   Lock,
   Play,
   Award,
+  Smartphone,
 } from '../components/LucideIcons';
 import { JobsService, MicroJobItem } from '../services/jobs';
-import { AiTrainingTasksScreen } from './AiTrainingTasksScreen';
-import { WebsiteTasksScreen } from './WebsiteTasksScreen';
-import { VideoReviewScreen } from './VideoReviewScreen';
+import { RealOfferTaskScreen } from './RealOfferTaskScreen';
 import { RewardedAdModal } from '../components/RewardedAdModal';
+import { NativeAdCard } from '../components/NativeAdCard';
+import { AdTierService } from '../services/adTierService';
 
 interface Props {
   userId: string;
 }
 
-type TaskCategoryFilter = 'ALL' | 'AI_DATA' | 'WEBSITE' | 'VIDEO' | 'SURVEY';
+type TaskCategoryFilter = 'ALL' | 'SURVEY' | 'APP_INSTALL' | 'WEBSITE';
 
 export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
   const [balance, setBalance] = useState<number>(0);
@@ -45,10 +47,10 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
   const [selectedTaskForAd, setSelectedTaskForAd] = useState<MicroJobItem | null>(null);
   const [showRewardedAdModal, setShowRewardedAdModal] = useState<boolean>(false);
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh: boolean = false) => {
     const [userBal, userJobs] = await Promise.all([
-      JobsService.getBalance(userId),
-      JobsService.getJobs(userId),
+      JobsService.getBalance(userId, forceRefresh),
+      JobsService.getJobs(userId, forceRefresh),
     ]);
     setBalance(userBal);
     setJobs(userJobs);
@@ -56,8 +58,13 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
 
   useEffect(() => {
     loadData();
-    const { AdMobService } = require('../services/admob');
-    AdMobService.preloadRewardedAd();
+    if (AdTierService.isAdMobAllowedSync()) {
+      const { AdMobService } = require('../services/admob');
+      AdMobService.preloadRewardedAd();
+    } else {
+      const { InMobiService } = require('../services/inmobi');
+      InMobiService.preloadRewardedAd();
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -74,16 +81,16 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(true);
     setRefreshing(false);
   };
 
   const handleStartTask = (task: MicroJobItem) => {
     if (task.isCompleted) {
-      Alert.alert('Task Completed', 'You have already completed this task today.');
+      Alert.alert('Task Completed', 'You have already completed this offer.');
       return;
     }
-    // Every task requires watching a rewarded ad to unlock and start
+    // Rewarded ad modal unlocks task for all users (Tier 1/2 -> AdMob, Tier 3 -> InMobi)
     setSelectedTaskForAd(task);
     setShowRewardedAdModal(true);
   };
@@ -96,50 +103,27 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
   };
 
   if (activeTaskView) {
-    if (activeTaskView.category === 'AI_DATA' || activeTaskView.category === 'SURVEY') {
-      return (
-        <AiTrainingTasksScreen
-          userId={userId}
-          onBack={() => setActiveTaskView(null)}
-          onCompleted={loadData}
-          task={activeTaskView}
-        />
-      );
-    }
-    if (activeTaskView.category === 'WEBSITE') {
-      return (
-        <WebsiteTasksScreen
-          userId={userId}
-          onBack={() => setActiveTaskView(null)}
-          onCompleted={loadData}
-          task={activeTaskView}
-        />
-      );
-    }
-    if (activeTaskView.category === 'VIDEO') {
-      return (
-        <VideoReviewScreen
-          userId={userId}
-          onBack={() => setActiveTaskView(null)}
-          onCompleted={loadData}
-          task={activeTaskView}
-        />
-      );
-    }
+    return (
+      <RealOfferTaskScreen
+        userId={userId}
+        task={activeTaskView}
+        onBack={() => setActiveTaskView(null)}
+        onCompleted={() => loadData(true)}
+      />
+    );
   }
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'AI_DATA':
-        return <Sparkles color="#38BDF8" size={20} />;
+      case 'APP_INSTALL':
+        return <Smartphone color="#38BDF8" size={20} />;
       case 'WEBSITE':
         return <Globe color="#34D399" size={20} />;
       case 'VIDEO':
         return <Video color="#F472B6" size={20} />;
       case 'SURVEY':
-        return <Briefcase color="#A78BFA" size={20} />;
       default:
-        return <Briefcase color="#FBBF24" size={20} />;
+        return <Briefcase color="#A78BFA" size={20} />;
     }
   };
 
@@ -150,10 +134,9 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
 
   const categories: { id: TaskCategoryFilter; label: string }[] = [
     { id: 'ALL', label: `All (${jobs.length})` },
-    { id: 'AI_DATA', label: 'AI Data' },
-    { id: 'WEBSITE', label: 'Web Visits' },
-    { id: 'VIDEO', label: 'Video Reviews' },
-    { id: 'SURVEY', label: 'Surveys' },
+    { id: 'SURVEY', label: 'Surveys & Forms' },
+    { id: 'APP_INSTALL', label: 'App Installs' },
+    { id: 'WEBSITE', label: 'Web Offers' },
   ];
 
   return (
@@ -230,48 +213,111 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
             </View>
           </>
         }
-        renderItem={({ item }: { item: MicroJobItem }) => (
-          <TouchableOpacity
-            style={[styles.taskCard, item.isCompleted && styles.taskCardCompleted]}
-            onPress={() => handleStartTask(item)}
-            activeOpacity={0.75}
-          >
-            <View style={styles.taskIconContainer}>{getCategoryIcon(item.category)}</View>
-
-            <View style={styles.taskDetails}>
-              <Text style={styles.taskTitle} numberOfLines={2}>{item.title}</Text>
-              <Text style={styles.taskDesc} numberOfLines={2}>
-                {item.description}
+        ListEmptyComponent={
+          !refreshing ? (
+            <View style={styles.emptyContainer}>
+              <Briefcase color="#64748B" size={42} />
+              <Text style={styles.emptyTitle}>No Offers Available Right Now</Text>
+              <Text style={styles.emptySubtitle}>
+                Live partner offers update dynamically based on your country. Pull down to refresh!
               </Text>
-
-              <View style={styles.taskMeta}>
-                <View style={styles.timeTag}>
-                  <Clock color="#94A3B8" size={13} />
-                  <Text style={styles.timeText}>{item.durationSeconds}s</Text>
-                </View>
-
-                <View style={styles.rewardTag}>
-                  <DollarSign color="#34D399" size={14} />
-                  <Text style={styles.rewardText}>+${item.rewardUsd.toFixed(2)}</Text>
-                </View>
-              </View>
             </View>
+          ) : null
+        }
+        renderItem={({ item, index }: { item: MicroJobItem; index: number }) => {
+          const isLocker = item.id.startsWith('cpalead_locker_');
+          return (
+            <View>
+              <TouchableOpacity
+                style={[
+                  styles.taskCard,
+                  isLocker && styles.taskCardLocker,
+                  item.isCompleted && styles.taskCardCompleted,
+                ]}
+                onPress={() => handleStartTask(item)}
+                activeOpacity={0.75}
+              >
+                {isLocker ? (
+                  <View style={styles.lockerIconContainer}>
+                    <Award color="#FBBF24" size={24} />
+                  </View>
+                ) : item.photoUrl ? (
+                  <View style={styles.taskThumbnailContainer}>
+                    <Image source={{ uri: item.photoUrl }} style={styles.taskThumbnail} resizeMode="contain" />
+                  </View>
+                ) : (
+                  <View style={styles.taskIconContainer}>{getCategoryIcon(item.category)}</View>
+                )}
 
-            <View style={styles.taskAction}>
-              {item.isCompleted ? (
-                <View style={styles.completedBadge}>
-                  <CheckCircle2 color="#34D399" size={20} />
-                  <Text style={styles.completedBadgeText}>Done</Text>
+                <View style={styles.taskDetails}>
+                  {isLocker && (
+                    <View style={styles.vipTagContainer}>
+                      <Sparkles color="#FBBF24" size={11} style={{ marginRight: 3 }} />
+                      <Text style={styles.vipTagText}>HIGHEST PAYOUT LOCKER</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.taskTitle, isLocker && styles.taskTitleLocker]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.taskDesc} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+
+                  <View style={styles.taskMeta}>
+                    <View style={[styles.rewardTag, isLocker && styles.rewardTagLocker]}>
+                      <DollarSign color={isLocker ? '#FBBF24' : '#34D399'} size={12} />
+                      <Text style={[styles.rewardText, isLocker && styles.rewardTextLocker]}>
+                        +{item.points || Math.round(item.rewardUsd * 100)} pts
+                      </Text>
+                      <Text style={[styles.rewardSubText, isLocker && styles.rewardSubTextLocker]}>
+                        (${item.rewardUsd.toFixed(2)})
+                      </Text>
+                    </View>
+
+                    <View style={[styles.networkBadge, isLocker && styles.networkBadgeLocker]}>
+                      <Text style={[styles.networkBadgeText, isLocker && styles.networkBadgeTextLocker]}>
+                        CPAlead
+                      </Text>
+                    </View>
+
+                    {item.acceptedCountries ? (
+                      <View style={styles.countryBadge}>
+                        <Globe color="#38BDF8" size={10} style={{ marginRight: 3 }} />
+                        <Text style={styles.countryBadgeText} numberOfLines={1} ellipsizeMode="tail">
+                          {item.acceptedCountries}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.timeTag}>
+                      <Clock color="#94A3B8" size={11} />
+                      <Text style={styles.timeText}>{item.durationSeconds}s</Text>
+                    </View>
+                  </View>
                 </View>
-              ) : (
-                <View style={styles.lockedPill}>
-                  <Lock color="#0F172A" size={12} style={{ marginRight: 3 }} />
-                  <Text style={styles.lockedPillText}>Unlock</Text>
+
+                <View style={styles.taskAction}>
+                  {item.isCompleted ? (
+                    <View style={styles.completedBadge}>
+                      <CheckCircle2 color="#34D399" size={20} />
+                      <Text style={styles.completedBadgeText}>Done</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.lockedPill, isLocker && styles.lockedPillLocker]}>
+                      <Lock color={isLocker ? '#78350F' : '#0F172A'} size={12} style={{ marginRight: 3 }} />
+                      <Text style={[styles.lockedPillText, isLocker && styles.lockedPillTextLocker]}>Unlock</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
+              </TouchableOpacity>
+
+            {/* Intersperse real Native Ad Card every 4 tasks */}
+            {(index + 1) % 4 === 0 && (
+              <NativeAdCard placement={`task_list_inline_${index}`} />
+            )}
+          </View>
+          );
+        }}
       />
 
       {/* Rewarded Ad Modal to Unlock Micro-Task */}
@@ -280,7 +326,7 @@ export const JobsScreen: React.FC<Props> = ({ userId }: Props) => {
         onClose={() => setShowRewardedAdModal(false)}
         onRewardEarned={handleRewardEarned}
         jobTitle={selectedTaskForAd?.title}
-        rewardAmount={selectedTaskForAd ? `+$${selectedTaskForAd.rewardUsd.toFixed(2)}` : undefined}
+        rewardAmount={selectedTaskForAd ? `+${selectedTaskForAd.points || Math.round(selectedTaskForAd.rewardUsd * 100)} Points ($${selectedTaskForAd.rewardUsd.toFixed(2)})` : undefined}
         mode="MICRO_TASK"
       />
     </View>
@@ -427,6 +473,7 @@ const styles = StyleSheet.create({
   },
   taskDetails: {
     flex: 1,
+    minWidth: 0,
     marginRight: 8,
   },
   taskTitle: {
@@ -444,7 +491,9 @@ const styles = StyleSheet.create({
   taskMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    flexWrap: 'wrap',
+    rowGap: 5,
+    columnGap: 6,
   },
   timeTag: {
     flexDirection: 'row',
@@ -468,6 +517,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginLeft: 2,
+  },
+  rewardSubText: {
+    color: '#A7F3D0',
+    fontSize: 10,
+    fontWeight: '700',
+    marginLeft: 3,
   },
   taskAction: {
     marginLeft: 10,
@@ -527,5 +582,134 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#0F172A',
     fontWeight: '700',
+  },
+  taskThumbnailContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  taskThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  countryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+    maxWidth: 95,
+  },
+  countryBadgeText: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  networkBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  networkBadgeText: {
+    color: '#38BDF8',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  taskCardLocker: {
+    borderColor: '#F59E0B',
+    borderWidth: 1.5,
+    backgroundColor: '#1E1B38',
+  },
+  lockerIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  vipTagContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  vipTagText: {
+    color: '#FDE68A',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  taskTitleLocker: {
+    color: '#FEF3C7',
+    fontWeight: '800',
+  },
+  rewardTagLocker: {
+    backgroundColor: '#78350F',
+  },
+  rewardTextLocker: {
+    color: '#FDE68A',
+  },
+  rewardSubTextLocker: {
+    color: '#FEF3C7',
+  },
+  networkBadgeLocker: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  networkBadgeTextLocker: {
+    color: '#FBBF24',
+  },
+  lockedPillLocker: {
+    backgroundColor: '#FBBF24',
+  },
+  lockedPillTextLocker: {
+    color: '#78350F',
+    fontWeight: '800',
   },
 });
