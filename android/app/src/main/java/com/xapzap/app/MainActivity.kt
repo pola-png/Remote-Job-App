@@ -21,6 +21,35 @@ class MainActivity : ReactActivity() {
     WindowCompat.setDecorFitsSystemWindows(window, false)
   }
 
+  override fun onNewIntent(intent: android.content.Intent?) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+
+    if (intent != null && intent.hasExtra("targetScreen")) {
+      try {
+        val reactApp = application as? com.facebook.react.ReactApplication
+        val reactContext = reactApp?.reactNativeHost?.reactInstanceManager?.currentReactContext
+        if (reactContext != null && reactContext.hasActiveReactInstance()) {
+          val map = com.facebook.react.bridge.Arguments.createMap()
+          val extras = intent.extras
+          if (extras != null) {
+            for (key in extras.keySet()) {
+              val value = extras.get(key)
+              if (value != null) {
+                map.putString(key, value.toString())
+              }
+            }
+          }
+          reactContext
+            .getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+            .emit("onNotificationOpened", map)
+        }
+      } catch (e: Exception) {
+        android.util.Log.w("MainActivity", "Failed to emit notification opened: ${e.message}")
+      }
+    }
+  }
+
   /**
    * Returns the name of the main component registered from JavaScript. This is used to schedule
    * rendering of the component.

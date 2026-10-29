@@ -39,14 +39,17 @@ export const RewardedAdModal: React.FC<Props> = ({
   rewardAmount,
 }) => {
   const [isLoadingAd, setIsLoadingAd] = useState(false);
+  const [adError, setAdError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
       setIsLoadingAd(false);
+      setAdError(null);
     }
   }, [visible]);
 
   const handleStartAd = async () => {
+    setAdError(null);
     setIsLoadingAd(true);
     // Request and show real Google AdMob + Pangle Rewarded Video
     await UnifiedAdService.showRewardedAd(
@@ -59,12 +62,15 @@ export const RewardedAdModal: React.FC<Props> = ({
       },
       () => {
         setIsLoadingAd(false);
-        onClose();
       },
       (err) => {
         setIsLoadingAd(false);
         console.warn('Real Rewarded Ad was not completed / no fill:', err);
-        onClose();
+        if (err?.code === 'AD_CLOSED_EARLY') {
+          setAdError('You closed the video before it finished playing. You must watch the full video ad to unlock.');
+        } else {
+          setAdError('Sponsor video ad failed to load right now. Please tap Retry Ad below.');
+        }
       }
     );
   };
@@ -87,7 +93,8 @@ export const RewardedAdModal: React.FC<Props> = ({
   };
 
   const getBtnText = () => {
-    if (isLoadingAd) return 'Unlocking...';
+    if (isLoadingAd) return 'Loading Video Ad...';
+    if (adError) return 'Retry Ad';
     if (isMicroTask) return 'Watch Video & Start Task';
     if (isJobDetails) return 'Watch Video & View Details';
     return 'Watch Video & Apply';
@@ -157,8 +164,18 @@ export const RewardedAdModal: React.FC<Props> = ({
               </View>
             </View>
 
+            {adError && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorBannerText}>{adError}</Text>
+              </View>
+            )}
+
             <TouchableOpacity
-              style={[styles.watchBtn, isLoadingAd && styles.watchBtnDisabled]}
+              style={[
+                styles.watchBtn,
+                adError ? styles.retryBtn : null,
+                isLoadingAd && styles.watchBtnDisabled,
+              ]}
               onPress={handleStartAd}
               activeOpacity={0.85}
               disabled={isLoadingAd}
@@ -267,6 +284,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+  errorBanner: {
+    width: '100%',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
+  },
+  errorBannerText: {
+    color: '#FCA5A5',
+    fontSize: 12.5,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   watchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,6 +308,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 14,
     borderRadius: 12,
+  },
+  retryBtn: {
+    backgroundColor: '#F59E0B',
   },
   watchBtnDisabled: {
     backgroundColor: '#334155',

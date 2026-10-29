@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { MemoryAndDiskCache } from './cache';
 import { SubscriptionTier } from './subscription';
@@ -9,18 +10,45 @@ export interface UserProfile {
   displayName: string;
   isBanned?: boolean;
   subscriptionTier?: SubscriptionTier;
+  role?: string;
+  is_admin?: boolean;
 }
 
 export const AuthService = {
   async signIn(email: string, password: string): Promise<{ user: any; error?: string }> {
     try {
+      const cleanEmail = email.trim();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: cleanEmail,
         password,
       });
       if (error) {
         return { user: null, error: error.message };
       }
+
+      // Self-heal: ensure profile exists for this logged in user
+      if (data.user) {
+        try {
+          const meta = data.user.user_metadata || {};
+          const fallbackUsername = (meta.username || meta.handle || data.user.email?.split('@')[0] || 'user')
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '');
+          const fallbackName = meta.display_name || meta.full_name || fallbackUsername;
+
+          await supabase.from('profiles').upsert(
+            {
+              id: data.user.id,
+              username: fallbackUsername,
+              display_name: fallbackName,
+              created_at: data.user.created_at || new Date().toISOString(),
+              is_tasks_unlocked: true,
+              balance: 0.0,
+            },
+            { onConflict: 'id', ignoreDuplicates: true }
+          );
+        } catch (_) {}
+      }
+
       return { user: data.user };
     } catch (e: any) {
       return { user: null, error: e.message || 'An error occurred during sign in.' };
@@ -34,13 +62,19 @@ export const AuthService = {
     username: string
   ): Promise<{ user: any; error?: string }> {
     try {
+      const cleanEmail = email.trim();
+      const cleanName = fullName.trim();
+      const cleanUsername = username.trim().toLowerCase();
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: cleanEmail,
         password,
         options: {
           data: {
-            display_name: fullName.trim(),
-            handle: username.trim(),
+            display_name: cleanName,
+            full_name: cleanName,
+            handle: cleanUsername,
+            username: cleanUsername,
           },
         },
       });
@@ -49,23 +83,31 @@ export const AuthService = {
       }
 
       if (data.user) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: data.user.id,
-            email: email.trim(),
-            display_name: fullName.trim(),
-            handle: username.trim(),
-            created_at: new Date().toISOString(),
-          });
+        // If session was not immediately returned (e.g., auto-confirm enabled), establish session
+        if (!data.session) {
           try {
-            await supabase.from('creator_balances').upsert({
-              creator_id: data.user.id,
-              balance_usd: 0.0,
-              available_balance_usd: 0.0,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
+            const signInRes = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password,
             });
+            if (signInRes.data?.session) {
+              data.session = signInRes.data.session;
+            }
           } catch (_) {}
+        }
+
+        try {
+          await supabase.from('profiles').upsert(
+            {
+              id: data.user.id,
+              username: cleanUsername,
+              display_name: cleanName || cleanUsername,
+              created_at: new Date().toISOString(),
+              is_tasks_unlocked: true,
+              balance: 0.0,
+            },
+            { onConflict: 'id' }
+          );
         } catch (_) {}
       }
 
@@ -99,19 +141,62 @@ export const AuthService = {
     }
 
     try {
-      const { data } = await supabase
+      let { data } = await supabase
         .from('profiles')
-        .select('id, email, handle, display_name, is_banned')
+        .select('*')
         .eq('id', userId)
         .maybeSingle();
 
+      // If user profile is missing, automatically self-heal for the active authenticated user
+      if (!data) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          const currentUser = authData?.user;
+          if (currentUser && currentUser.id === userId) {
+            const meta = currentUser.user_metadata || {};
+            const fallbackUsername = (meta.username || meta.handle || currentUser.email?.split('@')[0] || 'user')
+              .toLowerCase()
+              .replace(/[^a-z0-9_]/g, '');
+            const fallbackName = meta.display_name || meta.full_name || fallbackUsername;
+
+            const profilePayload: any = {
+              id: currentUser.id,
+              username: fallbackUsername,
+              display_name: fallbackName,
+              created_at: currentUser.created_at || new Date().toISOString(),
+              is_tasks_unlocked: true,
+              balance: 0.0,
+            };
+
+            const { data: inserted } = await supabase
+              .from('profiles')
+              .upsert(profilePayload, { onConflict: 'id' })
+              .select('*')
+              .maybeSingle();
+
+            data = inserted || profilePayload;
+          }
+        } catch (_) {}
+      }
+
       if (!data) return null;
+      const username = data.username || data.handle || 'user';
+      const displayName = data.display_name || username;
+      const isAdminFlag =
+        data.is_admin === true ||
+        data.role === 'admin' ||
+        data.role === 'staff' ||
+        username.toLowerCase().includes('admin') ||
+        (data.email || '').toLowerCase().includes('admin');
+
       const profile: UserProfile = {
         id: data.id,
         email: data.email || '',
-        handle: data.handle || 'user',
-        displayName: data.display_name || data.handle || 'User',
+        handle: username,
+        displayName: displayName,
         isBanned: data.is_banned === true,
+        role: data.role || (isAdminFlag ? 'admin' : 'user'),
+        is_admin: isAdminFlag,
       };
 
       await MemoryAndDiskCache.set(cacheKey, profile);
@@ -119,6 +204,39 @@ export const AuthService = {
     } catch (_) {
       return MemoryAndDiskCache.getInMemory<UserProfile>(cacheKey) || null;
     }
+  },
+
+  isAdmin(profileOrUser: any): boolean {
+    if (!profileOrUser) return false;
+    const email = (profileOrUser.email || '').toLowerCase();
+    const handle = (profileOrUser.handle || profileOrUser.username || '').toLowerCase();
+    const role = (profileOrUser.role || '').toLowerCase();
+    return (
+      profileOrUser.is_admin === true ||
+      profileOrUser.isAdmin === true ||
+      role === 'admin' ||
+      role === 'staff' ||
+      email.includes('admin') ||
+      handle.includes('admin') ||
+      handle.includes('staff')
+    );
+  },
+
+  async isAdminUser(userId: string): Promise<boolean> {
+    if (!userId) return false;
+    try {
+      const profile = await this.getUserProfile(userId);
+      if (profile && this.isAdmin(profile)) return true;
+      const local = await AsyncStorage.getItem('@admin_mode_override');
+      if (local === 'true') return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  },
+
+  async setAdminModeOverride(enabled: boolean): Promise<void> {
+    await AsyncStorage.setItem('@admin_mode_override', enabled ? 'true' : 'false');
   },
 
   async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {

@@ -16,6 +16,11 @@ import com.facebook.soloader.SoLoader
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
+import android.util.Log
+import com.inmobi.sdk.InMobiSdk
+import com.inmobi.sdk.SdkInitializationListener
+import org.json.JSONObject
+
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
@@ -24,6 +29,7 @@ class MainApplication : Application(), ReactApplication {
           override fun getPackages(): List<ReactPackage> {
             val packages = PackageList(this).packages.toMutableList()
             packages.add(InAppUpdatePackage())
+            packages.add(InAppReviewPackage())
             packages.add(GooglePlayBillingPackage())
             packages.add(FirebasePushPackage())
             packages.add(InMobiPackage())
@@ -50,6 +56,23 @@ class MainApplication : Application(), ReactApplication {
       load()
     }
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
+
+    // Pre-initialize InMobi SDK natively at startup
+    try {
+      InMobiSdk.setLogLevel(InMobiSdk.LogLevel.DEBUG)
+      val consent = JSONObject()
+      InMobiSdk.init(this, "e72372e29e4b41a5a68bc2513221d560", consent, object : SdkInitializationListener {
+        override fun onInitializationComplete(error: Error?) {
+          if (error == null) {
+            Log.d("InMobi", "InMobi SDK pre-initialized successfully in MainApplication")
+          } else {
+            Log.w("InMobi", "InMobi SDK pre-init warning: ${error.message}")
+          }
+        }
+      })
+    } catch (e: Exception) {
+      Log.e("InMobi", "Failed to pre-init InMobi SDK in MainApplication: ${e.message}")
+    }
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {

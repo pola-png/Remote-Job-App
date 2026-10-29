@@ -17,6 +17,7 @@ let detectedTier: AdTier = 'UNKNOWN';
 let isAllowedCache: boolean | null = null;
 let isResolving = false;
 let initPromise: Promise<boolean> | null = null;
+let adminOverride = false;
 
 /**
  * Determine if a given country code qualifies as Tier 1, Tier 2, or Tier 3
@@ -24,15 +25,25 @@ let initPromise: Promise<boolean> | null = null;
 function classifyCountry(countryCode: string): { tier: AdTier; allowed: boolean } {
   const code = countryCode.toUpperCase().trim();
 
+  let tier: AdTier = 'UNKNOWN';
   if (TIER_1_COUNTRIES[code]) {
+    tier = 'TIER_1';
+  } else if (TIER_2_COUNTRIES[code]) {
+    tier = 'TIER_2';
+  } else if (TIER_3_COUNTRIES[code]) {
+    tier = 'TIER_3';
+  }
+
+  // If all tiers are allowed, AdMob is available globally to all tiers
+  if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+    return { tier, allowed: true };
+  }
+
+  if (tier === 'TIER_1' || tier === 'TIER_2') {
     return { tier: 'TIER_1', allowed: true };
   }
 
-  if (TIER_2_COUNTRIES[code]) {
-    return { tier: 'TIER_2', allowed: true };
-  }
-
-  if (TIER_3_COUNTRIES[code]) {
+  if (tier === 'TIER_3') {
     return { tier: 'TIER_3', allowed: false };
   }
 
@@ -48,6 +59,9 @@ function classifyCountry(countryCode: string): { tier: AdTier; allowed: boolean 
  * Fast timezone-based heuristic (0ms, offline)
  */
 function checkTimezoneHeuristic(): { isTier3: boolean; isTier1Or2: boolean } {
+  if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+    return { isTier3: false, isTier1Or2: true };
+  }
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
     if (!tz) return { isTier3: false, isTier1Or2: false };
@@ -122,7 +136,9 @@ export const AdTierService = {
       }
 
       // 2. If no cached country yet, use offline timezone heuristic
-      if (isAllowedCache === null) {
+      if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+        isAllowedCache = true;
+      } else if (isAllowedCache === null) {
         const tz = checkTimezoneHeuristic();
         if (tz.isTier3) {
           detectedTier = 'TIER_3';
@@ -207,11 +223,31 @@ export const AdTierService = {
   },
 
   /**
+   * Set admin override to view/test AdMob watch ads regardless of geographic tier
+   */
+  setAdminOverride(enabled: boolean): void {
+    adminOverride = enabled;
+    console.log(`[AdTier] Admin override set to: ${enabled}`);
+  },
+
+  isAdminOverride(): boolean {
+    return adminOverride;
+  },
+
+  /**
    * Synchronous check for UI components and ad calls.
-   * If country is Tier 3, strictly returns FALSE for AdMob.
-   * Only returns TRUE if country is in Tier 1 or Tier 2.
+   * If country is Tier 3, strictly returns FALSE for AdMob (unless admin override or ALLOW_ALL_TIERS is active).
+   * Only returns TRUE if country is in Tier 1 or Tier 2, or ALLOW_ALL_TIERS is enabled.
    */
   isAdMobAllowedSync(): boolean {
+    if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+      return true;
+    }
+
+    if (adminOverride) {
+      return true; // Admin bypasses tier restriction
+    }
+
     if (isAllowedCache !== null) {
       return isAllowedCache;
     }
@@ -234,18 +270,23 @@ export const AdTierService = {
 
   /**
    * Synchronous check if InMobi should be used.
-   * InMobi is dedicated for Tier 3 countries.
+   * InMobi is dedicated for Tier 3 countries when AdMob is tier-gated.
    */
   isInMobiAllowedSync(): boolean {
+    if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+      return false;
+    }
     return !this.isAdMobAllowedSync();
   },
 
   /**
    * Get active ad network for current user:
-   * Tier 1 & Tier 2 => ADMOB
-   * Tier 3 => INMOBI
+   * When ALLOW_ALL_TIERS is true => ADMOB for everyone
    */
   getActiveAdNetwork(): 'ADMOB' | 'INMOBI' {
+    if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+      return 'ADMOB';
+    }
     return this.isAdMobAllowedSync() ? 'ADMOB' : 'INMOBI';
   },
 
@@ -253,6 +294,9 @@ export const AdTierService = {
    * Quick check if user is in Tier 3
    */
   isTier3(): boolean {
+    if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+      return false;
+    }
     return !this.isAdMobAllowedSync();
   },
 
@@ -260,6 +304,9 @@ export const AdTierService = {
    * Async check - waits for geo initialization if needed
    */
   async isAdMobAllowed(): Promise<boolean> {
+    if (AD_TIER_CONFIG.ALLOW_ALL_TIERS) {
+      return true;
+    }
     if (isAllowedCache !== null) {
       return isAllowedCache;
     }

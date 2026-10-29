@@ -92,6 +92,7 @@ export const InMobiService = {
 
   /**
    * Show InMobi Rewarded Video Ad for Tier 3 users
+   * Strictly rewards ONLY when the video finishes playing (res?.rewardEarned === true).
    */
   async showRewardedAd(
     onRewardEarned: (reward: InMobiRewardResult) => void,
@@ -102,15 +103,7 @@ export const InMobiService = {
     const placementId = this.getRewardedPlacementId();
 
     if (!isConfigured || !placementId) {
-      console.log(
-        '[InMobi] Tier 3 Rewarded: InMobi placement ID not available. Auto-granting reward.'
-      );
-      onRewardEarned({
-        rewardEarned: true,
-        type: 'JOB_APPLICATION_UNLOCK',
-        amount: 1,
-      });
-      if (onDismissed) onDismissed();
+      onError?.({ code: 'AD_NOT_CONFIGURED', message: 'Video ad is unavailable right now. Please tap Retry Ad.' });
       return;
     }
 
@@ -127,33 +120,23 @@ export const InMobiService = {
             type: 'TASK_UNLOCK',
             amount: 1,
           });
+          if (onDismissed) onDismissed();
         } else {
-          console.log('[InMobi] Rewarded ad ended or had no inventory:', res?.error);
-          onRewardEarned({
-            rewardEarned: true,
-            type: 'TASK_UNLOCK',
-            amount: 1,
+          console.log('[InMobi] Rewarded ad ended early or had no inventory:', res?.error);
+          onError?.({
+            code: 'AD_NO_FILL',
+            message: 'Ad did not complete or failed to load. Please tap Retry Ad.',
           });
         }
       } else {
-        // Fallback for dev / unlinked environments
-        onRewardEarned({
-          rewardEarned: true,
-          type: 'TASK_UNLOCK',
-          amount: 1,
+        onError?.({
+          code: 'AD_MODULE_UNAVAILABLE',
+          message: 'Ad player unavailable. Please tap Retry Ad.',
         });
       }
-      if (onDismissed) onDismissed();
     } catch (err) {
       console.warn('[InMobi] Rewarded video error:', err);
-      // Auto-unlock so user experience is not blocked if ad load fails
-      onRewardEarned({
-        rewardEarned: true,
-        type: 'JOB_APPLICATION_UNLOCK',
-        amount: 1,
-      });
       onError?.(err);
-      if (onDismissed) onDismissed();
     }
   },
 

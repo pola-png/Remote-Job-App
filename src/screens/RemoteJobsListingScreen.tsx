@@ -56,6 +56,7 @@ interface Props {
   onToggleSearch?: () => void;
   onNavigateToPostJob?: () => void;
   onNavigateToSubscription?: (targetTier?: SubscriptionTier) => void;
+  isActive?: boolean;
 }
 
 interface FilterTab {
@@ -90,8 +91,10 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
   onToggleSearch,
   onNavigateToPostJob,
   onNavigateToSubscription,
+  isActive,
 }: Props) => {
   const [jobs, setJobs] = useState<RemoteJob[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [displayedCount, setDisplayedCount] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('ALL');
@@ -123,6 +126,20 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
   const [coverNote, setCoverNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fast-path: Load cached remote jobs immediately on mount (0ms) so user never sees empty screen
+  useEffect(() => {
+    let isMounted = true;
+    RemoteJobsService.getCachedJobs().then((cached) => {
+      if (isMounted && cached && cached.length > 0) {
+        setJobs(cached);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Load user subscription
   const loadSubscription = async () => {
     const sub = await SubscriptionService.getUserSubscription(userId);
@@ -130,6 +147,9 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
   };
 
   const loadJobs = async () => {
+    if (jobs.length === 0) {
+      setIsLoading(true);
+    }
     const filterOptions: JobFilterOptions = {
       searchQuery,
     };
@@ -148,8 +168,14 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
       filterOptions.category = selectedFilter;
     }
 
-    const data = await RemoteJobsService.getRemoteJobs(filterOptions);
-    setJobs(data);
+    try {
+      const data = await RemoteJobsService.getRemoteJobs(filterOptions);
+      if (data && data.length > 0) {
+        setJobs(data);
+      }
+    } finally {
+      setIsLoading(false);
+    }
     setDisplayedCount(10);
   };
 
@@ -162,7 +188,7 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
 
   useEffect(() => {
     loadJobs();
-  }, [selectedFilter, searchQuery]);
+  }, [selectedFilter, searchQuery, isActive]);
 
   // Hardware Back Handler: Handles returning from Job Details / Modals without jumping to Landing
   useEffect(() => {
@@ -471,6 +497,29 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
               )}
             </View>
           </View>
+        }
+        ListEmptyComponent={
+          isLoading && jobs.length === 0 ? (
+            <View style={{ paddingVertical: 60, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color="#38BDF8" />
+              <Text style={{ color: '#F8FAFC', fontSize: 16, fontWeight: '700', marginTop: 14 }}>
+                Loading Remote Openings...
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 4 }}>
+                Fetching verified positions worldwide
+              </Text>
+            </View>
+          ) : !refreshing ? (
+            <View style={{ paddingVertical: 50, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}>
+              <Briefcase color="#64748B" size={42} />
+              <Text style={{ color: '#F8FAFC', fontSize: 16, fontWeight: '700', marginTop: 12 }}>
+                No Openings Found
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                Pull down to refresh or adjust your category filter.
+              </Text>
+            </View>
+          ) : null
         }
         ListFooterComponent={
           displayedCount < jobs.length ? (

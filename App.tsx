@@ -40,6 +40,7 @@ import { PolicyPrivacyScreen } from './src/screens/PolicyPrivacyScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { PostJobScreen } from './src/screens/PostJobScreen';
 import { SubscriptionPlansScreen } from './src/screens/SubscriptionPlansScreen';
+import { WatchAdsScreen } from './src/screens/WatchAdsScreen';
 import { InAppNotificationBanner } from './src/components/InAppNotificationBanner';
 import mobileAds from 'react-native-google-mobile-ads';
 import { AdTierService } from './src/services/adTierService';
@@ -53,7 +54,8 @@ type TabType =
   | 'POLICY'
   | 'NOTIFICATIONS'
   | 'POST_JOB'
-  | 'SUBSCRIPTION';
+  | 'SUBSCRIPTION'
+  | 'WATCH_ADS';
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -69,6 +71,9 @@ export default function App() {
 
   // Search trigger from Top Bar
   const [isSearchVisible, setIsSearchVisible] = useState<boolean>(false);
+
+  // Highlighted task from push notification / alert click
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 
   // Play Store In-App Update State
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
@@ -144,9 +149,39 @@ export default function App() {
       setSession(sess);
       if (sess?.user?.id) {
         AuthService.getUserProfile(sess.user.id).then(setProfile);
+        // Pre-warm Remote Jobs & Micro-Jobs cache in background so screens open in 0ms
+        try {
+          const { RemoteJobsService } = require('./src/services/remoteJobs');
+          const { JobsService } = require('./src/services/jobs');
+          RemoteJobsService.getRemoteJobs().catch(() => {});
+          JobsService.getJobs(sess.user.id).catch(() => {});
+        } catch (_) {}
+        // Automatically check and sync highest paying task opportunity for user
+        NotificationService.syncHighestPayingTaskAlert(sess.user.id).then(() => {
+          loadUnreadCount();
+        });
       }
       setIsLoading(false);
     });
+
+    // Check if app was opened via system push notification click (cold start / background)
+    try {
+      const { NativeModules } = require('react-native');
+      const FirebasePush = NativeModules.FirebasePushModule;
+      if (FirebasePush?.getInitialNotification) {
+        FirebasePush.getInitialNotification().then((data: any) => {
+          if (data && data.targetScreen) {
+            if (data.taskId) {
+              setHighlightTaskId(data.taskId);
+            }
+            const target = (['REMOTE_JOBS', 'MICRO_JOBS', 'PAYOUT', 'POLICY'].includes(data.targetScreen)
+              ? data.targetScreen
+              : 'MICRO_JOBS') as TabType;
+            navigateToTab(target);
+          }
+        }).catch(() => {});
+      }
+    } catch (_) {}
 
     // Listen for auth state changes
     const {
@@ -171,6 +206,7 @@ export default function App() {
         const { InMobiService } = require('./src/services/inmobi');
         InMobiService.initialize().then((ok: boolean) => {
           console.log('[InMobi Startup] Native InMobi SDK init result:', ok);
+          InMobiService.preloadRewardedAd();
         });
         return;
       }
@@ -208,20 +244,41 @@ export default function App() {
     const pushSubscription = DeviceEventEmitter.addListener(
       'onRemotePushNotificationReceived',
       async (data: any) => {
-        const title = data.title || 'Remote Job Alert';
+        const title = data.title || 'Task Alert';
         const body = data.body || 'New opportunities are live.';
         const targetScreen = (['REMOTE_JOBS', 'MICRO_JOBS', 'PAYOUT', 'POLICY'].includes(data.targetScreen)
           ? data.targetScreen
-          : undefined) as 'REMOTE_JOBS' | 'MICRO_JOBS' | 'PAYOUT' | 'POLICY' | undefined;
+          : 'MICRO_JOBS') as 'REMOTE_JOBS' | 'MICRO_JOBS' | 'PAYOUT' | 'POLICY';
 
         const notif = await NotificationService.triggerInAppNotification(
           title,
           body,
-          'JOB_ALERT',
-          targetScreen
+          data.type === 'highest_paying_task_alert' || data.type === 'task_alert' ? 'TASK_CREDIT' : 'JOB_ALERT',
+          targetScreen,
+          {
+            taskId: data.taskId,
+            reward: data.reward,
+            actionUrl: data.actionUrl,
+          }
         );
         setActiveToast(notif);
         loadUnreadCount();
+      }
+    );
+
+    // Listen for notification tap event when app was in background
+    const openSubscription = DeviceEventEmitter.addListener(
+      'onNotificationOpened',
+      (data: any) => {
+        if (data && data.targetScreen) {
+          if (data.taskId) {
+            setHighlightTaskId(data.taskId);
+          }
+          const target = (['REMOTE_JOBS', 'MICRO_JOBS', 'PAYOUT', 'POLICY'].includes(data.targetScreen)
+            ? data.targetScreen
+            : 'MICRO_JOBS') as TabType;
+          navigateToTab(target);
+        }
       }
     );
 
@@ -238,6 +295,7 @@ export default function App() {
     return () => {
       subscription.unsubscribe();
       pushSubscription.remove();
+      openSubscription.remove();
       appStateSubscription.remove();
     };
   }, []);
@@ -248,6 +306,9 @@ export default function App() {
   };
 
   const handleBannerPress = (notif: AppNotification) => {
+    if (notif.taskId) {
+      setHighlightTaskId(notif.taskId);
+    }
     if (notif.targetScreen) {
       navigateToTab(notif.targetScreen as TabType);
     } else {
@@ -320,8 +381,8 @@ export default function App() {
         onDismiss={() => setActiveToast(null)}
       />
 
-      {/* Global Top App Bar (Hidden on Landing, Post Job, and Subscription screens) */}
-      {currentTab !== 'LANDING' && currentTab !== 'POST_JOB' && currentTab !== 'SUBSCRIPTION' && (
+      {/* Global Top App Bar (Hidden on Landing, Post Job, Subscription, and Watch Ads screens) */}
+      {currentTab !== 'LANDING' && currentTab !== 'POST_JOB' && currentTab !== 'SUBSCRIPTION' && currentTab !== 'WATCH_ADS' && (
         <View style={styles.globalTopBar}>
           <View style={styles.appNameContainer}>
             <Text style={styles.globalAppName}>Remote Job</Text>
@@ -390,6 +451,7 @@ export default function App() {
             <RemoteJobsListingScreen
               userId={session.user.id}
               userEmail={session.user.email}
+              isActive={currentTab === 'REMOTE_JOBS'}
               onBackToLanding={() => navigateToTab('LANDING')}
               isSearchVisible={isSearchVisible}
               onToggleSearch={() => setIsSearchVisible((prev) => !prev)}
@@ -432,7 +494,45 @@ export default function App() {
 
         {loadedTabs['MICRO_JOBS'] && (
           <View style={[styles.screenWrapper, currentTab !== 'MICRO_JOBS' && styles.hiddenScreen]}>
-            <JobsScreen userId={session.user.id} />
+            <JobsScreen
+              userId={session.user.id}
+              userEmail={session?.user?.email}
+              isActive={currentTab === 'MICRO_JOBS'}
+              isAdmin={
+                Boolean(
+                  profile?.is_admin ||
+                  (profile as any)?.role === 'admin' ||
+                  (profile as any)?.role === 'staff' ||
+                  profile?.email?.toLowerCase().includes('admin') ||
+                  profile?.handle?.toLowerCase().includes('admin') ||
+                  session?.user?.email?.toLowerCase().includes('admin')
+                )
+              }
+              onNavigateToWatchAds={() => navigateToTab('WATCH_ADS')}
+              highlightTaskId={highlightTaskId}
+              onClearHighlightTask={() => setHighlightTaskId(null)}
+            />
+          </View>
+        )}
+
+        {loadedTabs['WATCH_ADS'] && (
+          <View style={[styles.screenWrapper, currentTab !== 'WATCH_ADS' && styles.hiddenScreen]}>
+            <WatchAdsScreen
+              userId={session.user.id}
+              userEmail={session?.user?.email}
+              isAdmin={
+                Boolean(
+                  profile?.is_admin ||
+                  (profile as any)?.role === 'admin' ||
+                  (profile as any)?.role === 'staff' ||
+                  profile?.email?.toLowerCase().includes('admin') ||
+                  profile?.handle?.toLowerCase().includes('admin') ||
+                  session?.user?.email?.toLowerCase().includes('admin')
+                )
+              }
+              onBack={navigateBack}
+              onBalanceUpdated={(_newBal) => {}}
+            />
           </View>
         )}
 
@@ -464,7 +564,10 @@ export default function App() {
                 navigateBack();
                 loadUnreadCount();
               }}
-              onNavigateScreen={(screen) => {
+              onNavigateScreen={(screen, taskId) => {
+                if (taskId) {
+                  setHighlightTaskId(taskId);
+                }
                 navigateToTab(screen as TabType);
                 loadUnreadCount();
               }}
@@ -473,8 +576,8 @@ export default function App() {
         )}
       </View>
 
-      {/* Bottom Navigation Bar (Hidden on Explore / Landing, Post Job, and Subscription Screens) */}
-      {currentTab !== 'LANDING' && currentTab !== 'POST_JOB' && currentTab !== 'SUBSCRIPTION' && (
+      {/* Bottom Navigation Bar (Hidden on Explore / Landing, Post Job, Subscription, and Watch Ads Screens) */}
+      {currentTab !== 'LANDING' && currentTab !== 'POST_JOB' && currentTab !== 'SUBSCRIPTION' && currentTab !== 'WATCH_ADS' && (
         <View style={styles.navBar}>
           <TouchableOpacity
             style={[styles.navItem, currentTab === 'REMOTE_JOBS' && styles.navItemActive]}

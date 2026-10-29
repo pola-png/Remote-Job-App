@@ -15,13 +15,13 @@ import {
   Zap,
   Shield,
   CheckCheck,
-  CheckCircle2,
+  Sparkles,
 } from '../components/LucideIcons';
 import { AppNotification, NotificationService } from '../services/notifications';
 
 interface Props {
   onBack: () => void;
-  onNavigateScreen: (screen: 'REMOTE_JOBS' | 'MICRO_JOBS' | 'PAYOUT' | 'POLICY') => void;
+  onNavigateScreen: (screen: 'REMOTE_JOBS' | 'MICRO_JOBS' | 'PAYOUT' | 'POLICY', taskId?: string) => void;
 }
 
 export const NotificationsScreen: React.FC<Props> = ({
@@ -51,7 +51,7 @@ export const NotificationsScreen: React.FC<Props> = ({
     setNotifications(updated);
 
     if (item.targetScreen) {
-      onNavigateScreen(item.targetScreen);
+      onNavigateScreen(item.targetScreen, item.taskId);
     }
   };
 
@@ -60,7 +60,10 @@ export const NotificationsScreen: React.FC<Props> = ({
     setNotifications(updated);
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string, hasReward?: boolean) => {
+    if (hasReward) {
+      return <Sparkles color="#34D399" size={20} />;
+    }
     switch (type) {
       case 'JOB_ALERT':
         return <Briefcase color="#38BDF8" size={20} />;
@@ -77,11 +80,11 @@ export const NotificationsScreen: React.FC<Props> = ({
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft color="#F8FAFC" size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={handleMarkAllRead} style={styles.readAllBtn}>
+        <TouchableOpacity onPress={handleMarkAllRead} style={styles.readAllBtn} activeOpacity={0.7}>
           <CheckCheck color="#38BDF8" size={20} />
         </TouchableOpacity>
       </View>
@@ -102,28 +105,51 @@ export const NotificationsScreen: React.FC<Props> = ({
             <Bell color="#475569" size={48} />
             <Text style={styles.emptyTitle}>No Notifications Yet</Text>
             <Text style={styles.emptyDesc}>
-              You'll be alerted here whenever matching remote jobs or payout updates arrive.
+              You'll be alerted here whenever high-paying tasks, matching remote jobs, or payout updates arrive.
             </Text>
           </View>
         }
-        renderItem={({ item }: { item: AppNotification }) => (
-          <TouchableOpacity
-            style={[styles.notifCard, !item.isRead && styles.notifCardUnread]}
-            onPress={() => handleNotificationPress(item)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.iconContainer}>{getNotificationIcon(item.type)}</View>
-
-            <View style={styles.notifContent}>
-              <View style={styles.notifTitleRow}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                {!item.isRead && <View style={styles.unreadDot} />}
+        renderItem={({ item }: { item: AppNotification }) => {
+          const hasReward = Boolean(item.reward);
+          return (
+            <TouchableOpacity
+              style={[
+                styles.notifCard,
+                !item.isRead && styles.notifCardUnread,
+                hasReward && styles.notifCardReward,
+              ]}
+              onPress={() => handleNotificationPress(item)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconContainer, hasReward && styles.iconContainerReward]}>
+                {getNotificationIcon(item.type, hasReward)}
               </View>
-              <Text style={styles.notifBody}>{item.body}</Text>
-              <Text style={styles.notifTime}>{item.createdAt}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+
+              <View style={styles.notifContent}>
+                <View style={styles.notifTitleRow}>
+                  <Text style={styles.notifTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  {!item.isRead && <View style={styles.unreadDot} />}
+                </View>
+
+                <Text style={styles.notifBody}>{item.body}</Text>
+
+                <View style={styles.notifFooter}>
+                  <Text style={styles.notifTime}>{item.createdAt}</Text>
+                  {hasReward && (
+                    <View style={styles.rewardBadge}>
+                      <Text style={styles.rewardBadgeText}>{item.reward}</Text>
+                    </View>
+                  )}
+                  {item.targetScreen && (
+                    <Text style={styles.tapActionHint}>Tap to view →</Text>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
@@ -194,6 +220,9 @@ const styles = StyleSheet.create({
     borderColor: '#38BDF8',
     backgroundColor: '#0F172A',
   },
+  notifCardReward: {
+    borderColor: 'rgba(52, 211, 153, 0.45)',
+  },
   iconContainer: {
     width: 42,
     height: 42,
@@ -203,12 +232,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
+  iconContainerReward: {
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+  },
   notifContent: {
     flex: 1,
   },
   notifTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
@@ -217,22 +249,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F8FAFC',
     flex: 1,
+    lineHeight: 20,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#38BDF8',
-    marginLeft: 6,
+    marginLeft: 8,
+    marginTop: 6,
   },
   notifBody: {
     fontSize: 13,
-    color: '#CBD5E1',
+    color: '#94A3B8',
     lineHeight: 18,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  notifFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
   },
   notifTime: {
     fontSize: 11,
     color: '#64748B',
+  },
+  rewardBadge: {
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderWidth: 1,
+    borderColor: '#34D399',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  rewardBadgeText: {
+    color: '#34D399',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  tapActionHint: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

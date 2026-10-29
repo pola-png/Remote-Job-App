@@ -155,8 +155,10 @@ export const TIER_3_TIMEZONES = [
 ];
 
 export const AD_TIER_CONFIG = {
-  // If true: ONLY allow Tier 1 and Tier 2 countries. All other countries (including Tier 3) are blocked.
-  WHITELIST_ONLY: true,
-  // Fallback if country detection fails: set to false to protect AdMob account from invalid traffic
-  ALLOW_ON_UNKNOWN_GEO: false,
+  // If true: AdMob is allowed for ALL tiers (Tier 1, Tier 2, and Tier 3) and all countries worldwide
+  ALLOW_ALL_TIERS: true,
+  // If true: ONLY allow Tier 1 and Tier 2 countries. Set to false to allow all tiers.
+  WHITELIST_ONLY: false,
+  // Fallback if country detection fails: set to true to allow AdMob
+  ALLOW_ON_UNKNOWN_GEO: true,
 };

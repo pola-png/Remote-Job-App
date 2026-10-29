@@ -105,7 +105,9 @@ class RemoteJobFirebaseMessagingService : FirebaseMessagingService() {
         data: Map<String, String>
     ) {
         val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra("targetScreen", targetScreen)
             data.forEach { (k, v) ->
                 putExtra(k, v)
@@ -113,14 +115,14 @@ class RemoteJobFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         } else {
-            PendingIntent.FLAG_ONE_SHOT
+            PendingIntent.FLAG_UPDATE_CURRENT
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            System.currentTimeMillis().toInt(),
+            (System.currentTimeMillis() % 100000).toInt(),
             intent,
             pendingIntentFlags
         )

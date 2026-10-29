@@ -302,23 +302,20 @@ export const AdMobService = {
   },
 
   /**
-   * Request and show REAL Google AdMob Rewarded Video Ad with instant cache
-   * For Tier 3 regions, immediately grants the reward without calling AdMob
+   * Request and show REAL Google AdMob Rewarded Video Ad with instant cache.
+   * STRICT POLICY: Never reward the user unless the rewarded ad actually plays to completion
+   * (RewardedAdEventType.EARNED_REWARD is fired). If the ad fails to fill or is closed early,
+   * invoke onError so the caller can show a Retry Ad prompt.
    */
   async showRewardedAd(
     onRewardEarned: (reward: AdRewardResult) => void,
     onDismissed?: () => void,
     onError?: (err: any) => void
   ): Promise<void> {
-    // Strictly gate against Tier 3: Zero AdMob network requests
     if (!AdTierService.isAdMobAllowedSync()) {
-      console.log('[AdMob Gated] Tier 3 region: Zero ad network requests. Granting immediate unlock.');
-      onRewardEarned({
-        rewardEarned: true,
-        type: 'JOB_APPLICATION_UNLOCK',
-        amount: 1,
-      });
-      if (onDismissed) onDismissed();
+      if (onError) {
+        onError({ code: 'AD_NOT_AVAILABLE', message: 'Rewarded ads are currently unavailable.' });
+      }
       return;
     }
 
@@ -329,34 +326,59 @@ export const AdMobService = {
       isPreloadedReady = false;
 
       let hasEarnedReward = false;
+      let earnedRewardPayload: AdRewardResult | null = null;
       let unsubscribeEarned: (() => void) | null = null;
       let unsubscribeClosed: (() => void) | null = null;
+      let unsubscribeError: (() => void) | null = null;
 
       const cleanup = () => {
+        isAnyAdShowing = false;
         if (unsubscribeEarned) unsubscribeEarned();
         if (unsubscribeClosed) unsubscribeClosed();
+        if (unsubscribeError) unsubscribeError();
         // Immediately start preloading the NEXT ad in the background
         setTimeout(() => this.preloadRewardedAd(), 1000);
       };
 
       unsubscribeEarned = activeAd.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward) => {
         hasEarnedReward = true;
-        onRewardEarned({
+        earnedRewardPayload = {
           rewardEarned: true,
           type: reward?.type || 'JOB_APPLICATION_UNLOCK',
           amount: reward?.amount || 1,
-        });
+        };
       });
 
       unsubscribeClosed = activeAd.addAdEventListener(AdEventType.CLOSED, () => {
         cleanup();
-        if (!hasEarnedReward) {
-          onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
+        if (hasEarnedReward && earnedRewardPayload) {
+          onRewardEarned(earnedRewardPayload);
+          if (onDismissed) onDismissed();
+        } else {
+          if (onError) {
+            onError({
+              code: 'AD_CLOSED_EARLY',
+              message: 'You closed the ad before it finished playing. Please watch the full ad to earn your reward.',
+            });
+          } else if (onDismissed) {
+            onDismissed();
+          }
         }
-        if (onDismissed) onDismissed();
+      });
+
+      unsubscribeError = activeAd.addAdEventListener(AdEventType.ERROR, (err) => {
+        cleanup();
+        if (onError) {
+          onError({
+            code: 'AD_SHOW_ERROR',
+            message: 'Failed to display video ad. Please retry.',
+            originalError: err,
+          });
+        }
       });
 
       try {
+        isAnyAdShowing = true;
         await activeAd.show();
         return;
       } catch (showErr) {
@@ -365,19 +387,30 @@ export const AdMobService = {
       }
     }
 
-    // 2. Dynamic on-demand load with fast 3.5s timeout safety
+    // 2. Dynamic on-demand load (12s load timeout so video ads have time to buffer; cleared as soon as LOADED fires)
     const adUnitId = this.getRewardedAdUnitId();
+    if (!adUnitId) {
+      if (onError) {
+        onError({ code: 'AD_NO_UNIT_ID', message: 'Ad unit is not configured.' });
+      }
+      return;
+    }
+
     let isHandled = false;
 
     const safetyTimer = setTimeout(() => {
       if (!isHandled) {
         isHandled = true;
-        console.log('Fast ad-load timeout reached, granting instant unlock');
-        onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
-        if (onDismissed) onDismissed();
+        console.warn('AdMob: Rewarded ad load timed out (no fill within 12s)');
         this.preloadRewardedAd();
+        if (onError) {
+          onError({
+            code: 'AD_LOAD_TIMEOUT',
+            message: 'Ad took too long to load or no ad was available. Please tap Retry Ad.',
+          });
+        }
       }
-    }, 3500);
+    }, 12000);
 
     try {
       const rewarded = RewardedAd.createForAdRequest(adUnitId, {
@@ -389,9 +422,11 @@ export const AdMobService = {
       let unsubscribeClosed: (() => void) | null = null;
       let unsubscribeError: (() => void) | null = null;
       let hasEarnedReward = false;
+      let earnedRewardPayload: AdRewardResult | null = null;
 
       const cleanup = () => {
         clearTimeout(safetyTimer);
+        isAnyAdShowing = false;
         if (unsubscribeLoaded) unsubscribeLoaded();
         if (unsubscribeEarned) unsubscribeEarned();
         if (unsubscribeClosed) unsubscribeClosed();
@@ -401,35 +436,50 @@ export const AdMobService = {
 
       unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
         if (isHandled) return;
+        // Clear load timeout as soon as the ad has loaded and starts playing!
+        clearTimeout(safetyTimer);
+        isAnyAdShowing = true;
         rewarded.show().catch((err) => {
           cleanup();
           if (!isHandled) {
             isHandled = true;
-            onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
-            if (onDismissed) onDismissed();
+            if (onError) {
+              onError({
+                code: 'AD_SHOW_FAILED',
+                message: 'Could not display the video ad. Please tap Retry Ad.',
+                originalError: err,
+              });
+            }
           }
         });
       });
 
       unsubscribeEarned = rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, (reward) => {
         hasEarnedReward = true;
-        if (!isHandled) {
-          onRewardEarned({
-            rewardEarned: true,
-            type: reward?.type || 'JOB_APPLICATION_UNLOCK',
-            amount: reward?.amount || 1,
-          });
-        }
+        earnedRewardPayload = {
+          rewardEarned: true,
+          type: reward?.type || 'JOB_APPLICATION_UNLOCK',
+          amount: reward?.amount || 1,
+        };
       });
 
       unsubscribeClosed = rewarded.addAdEventListener(AdEventType.CLOSED, () => {
         cleanup();
         if (!isHandled) {
           isHandled = true;
-          if (!hasEarnedReward) {
-            onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
+          if (hasEarnedReward && earnedRewardPayload) {
+            onRewardEarned(earnedRewardPayload);
+            if (onDismissed) onDismissed();
+          } else {
+            if (onError) {
+              onError({
+                code: 'AD_CLOSED_EARLY',
+                message: 'You closed the ad before it finished playing. Please watch the full ad to earn your reward.',
+              });
+            } else if (onDismissed) {
+              onDismissed();
+            }
           }
-          if (onDismissed) onDismissed();
         }
       });
 
@@ -437,8 +487,14 @@ export const AdMobService = {
         cleanup();
         if (!isHandled) {
           isHandled = true;
-          onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
-          if (onDismissed) onDismissed();
+          console.warn('AdMob Rewarded Ad no-fill / error:', error);
+          if (onError) {
+            onError({
+              code: 'AD_NO_FILL',
+              message: 'No sponsor video ad is available right now. Please tap Retry Ad.',
+              originalError: error,
+            });
+          }
         }
       });
 
@@ -447,8 +503,13 @@ export const AdMobService = {
       clearTimeout(safetyTimer);
       if (!isHandled) {
         isHandled = true;
-        onRewardEarned({ rewardEarned: true, type: 'JOB_APPLICATION_UNLOCK', amount: 1 });
-        if (onDismissed) onDismissed();
+        if (onError) {
+          onError({
+            code: 'AD_EXCEPTION',
+            message: 'Failed to request video ad. Please tap Retry Ad.',
+            originalError: err,
+          });
+        }
       }
     }
   },

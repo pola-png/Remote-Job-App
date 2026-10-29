@@ -3,9 +3,11 @@ package com.xapzap.app
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.util.Log
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -100,5 +102,33 @@ class FirebasePushModule(private val reactContext: ReactApplicationContext) :
                     promise.reject("TOPIC_UNSUB_ERROR", errorMsg)
                 }
             }
+    }
+
+    @ReactMethod
+    fun getInitialNotification(promise: Promise) {
+        try {
+            val activity = currentActivity
+            val intent = activity?.intent
+            if (intent != null && intent.hasExtra("targetScreen")) {
+                val map = Arguments.createMap()
+                val extras = intent.extras
+                if (extras != null) {
+                    for (key in extras.keySet()) {
+                        val value = extras.get(key)
+                        if (value != null) {
+                            map.putString(key, value.toString())
+                        }
+                    }
+                }
+                // Clear so not re-consumed on rotation
+                intent.removeExtra("targetScreen")
+                promise.resolve(map)
+                return
+            }
+            promise.resolve(null)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error getting initial notification: ${e.message}")
+            promise.resolve(null)
+        }
     }
 }

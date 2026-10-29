@@ -2,7 +2,7 @@
   "expo": {
     "name": "Remote Job",
     "slug": "remote-job",
-    "version": "30.0.21",
+    "version": "30.0.25",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -15,7 +15,7 @@
     },
     "android": {
       "package": "com.xapzap.app",
-      "versionCode": 66,
+      "versionCode": 70,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
       "adaptiveIcon": {

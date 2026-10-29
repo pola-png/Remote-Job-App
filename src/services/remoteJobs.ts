@@ -245,6 +245,19 @@ export const RemoteJobsService = {
   },
 
   /**
+   * Fast-path: read cached remote jobs instantly (0ms) so user never sees blank screen
+   */
+  async getCachedJobs(): Promise<RemoteJob[]> {
+    try {
+      const cacheKey = 'cached_supabase_remote_jobs_v2';
+      const cached = await MemoryAndDiskCache.get<RemoteJob[]>(cacheKey, 1000 * 60 * 60 * 24 * 7);
+      return cached && Array.isArray(cached) ? cached : [];
+    } catch (_) {
+      return [];
+    }
+  },
+
+  /**
    * Queries Supabase `public.job_postings` table directly.
    * If table is empty or not yet provisioned, fetches real live jobs directly
    * from live remote job APIs (Jobicy, Himalayas, Remotive), caches them locally,

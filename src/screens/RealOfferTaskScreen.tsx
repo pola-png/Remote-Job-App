@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from '../components/LucideIcons';
 import { JobsService, MicroJobItem } from '../services/jobs';
+import { UnifiedAdService } from '../services/ads';
 
 interface Props {
   userId: string;
@@ -81,31 +82,60 @@ export const RealOfferTaskScreen: React.FC<Props> = ({
     }
 
     setIsClaiming(true);
-    const res = await JobsService.completeTask(userId, task);
-    setIsClaiming(false);
 
-    if (res.success) {
-      const rewardMsg =
-        task.network === 'CPALEAD'
-          ? `+${task.points || Math.round(task.rewardUsd * 100)} Points ($${task.rewardUsd.toFixed(2)}) has been added to your available payout balance.`
-          : `+$${task.rewardUsd.toFixed(2)} has been added to your available payout balance.`;
+    // Show verification Rewarded Ad to maximize monetization on claim
+    await UnifiedAdService.showRewardedAd(
+      async () => {
+        const res = await JobsService.completeTask(userId, task);
+        setIsClaiming(false);
 
-      Alert.alert(
-        'Task Completed!',
-        rewardMsg,
-        [
-          {
-            text: 'Great!',
-            onPress: () => {
-              onCompleted?.(res.newBalance);
-              onBack();
+        if (res.success) {
+          // Immediately update parent screen balance state
+          onCompleted?.(res.newBalance);
+
+          const rewardMsg =
+            task.network === 'CPALEAD'
+              ? `+${task.points || Math.round(task.rewardUsd * 100)} Points ($${task.rewardUsd.toFixed(2)}) has been added to your available payout balance.`
+              : `+$${task.rewardUsd.toFixed(2)} has been added to your available payout balance.`;
+
+          Alert.alert(
+            'Task Completed & Verified!',
+            rewardMsg,
+            [
+              {
+                text: 'Great!',
+                onPress: () => {
+                  onBack();
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert('Error', 'Unable to record task completion. Please try again.');
+        }
+      },
+      () => {
+        setIsClaiming(false);
+      },
+      (err) => {
+        setIsClaiming(false);
+        console.warn('Claim Rewarded Ad not completed / no fill:', err);
+        const isClosedEarly = err?.code === 'AD_CLOSED_EARLY';
+        Alert.alert(
+          isClosedEarly ? 'Ad Not Completed' : 'Ad Failed to Load',
+          isClosedEarly
+            ? 'You closed the verification video before it finished playing. Please watch the full video ad to claim your task reward.'
+            : 'The verification video ad could not be loaded right now. Please tap Retry Ad to claim your reward.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Retry Ad',
+              onPress: () => handleClaim(),
             },
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Error', 'Unable to record task completion. Please try again.');
-    }
+          ]
+        );
+      }
+    );
   };
 
   const getCategoryBadgeLabel = (cat: string) => {

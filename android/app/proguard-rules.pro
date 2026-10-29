@@ -43,3 +43,18 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# InMobi SDK ProGuard Rules
+-keepattributes SourceFile,LineNumberTable
+-keep class com.inmobi.** { *; }
+-dontwarn com.inmobi.**
+-keep public class com.google.android.gms.ads.identifier.AdvertisingIdClient{
+    public *;
+}
+-keep public class com.google.android.gms.ads.identifier.AdvertisingIdClient$Info{
+    public *;
+}
+-keep class com.squareup.picasso.** {*;}
+-dontwarn com.squareup.picasso.**
+-dontwarn com.squareup.okhttp.**
+

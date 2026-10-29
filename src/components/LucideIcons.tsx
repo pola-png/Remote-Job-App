@@ -104,3 +104,5 @@ export const Share2 = createGlyphIcon({ symbol: '↗' });
 export const Play = createGlyphIcon({ symbol: '▶' });
 export const Award = createGlyphIcon({ symbol: '🏆' });
 export const Crown = createGlyphIcon({ symbol: '👑' });
+export const Star = createGlyphIcon({ symbol: '⭐' });
+

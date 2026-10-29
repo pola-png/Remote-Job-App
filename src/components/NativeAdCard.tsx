@@ -33,23 +33,22 @@ export const NativeAdCard: React.FC<Props> = ({ placement = 'feed_native' }) => 
   if (isTier3) {
     const inMobiPlacement = INMOBI_CONFIG.PLACEMENTS.NATIVE || '10000844853';
     return (
-      <View style={adLoaded ? styles.card : styles.collapsed}>
-        <View style={adLoaded ? styles.realAdContainer : styles.hiddenAd}>
-          <InMobiBannerView
-            placementId={inMobiPlacement}
-            width={300}
-            height={250}
-            onAdLoaded={() => {
-              setAdLoaded(true);
-              setAdFailed(false);
-            }}
-            onAdFailedToLoad={(err) => {
-              console.log('[InMobi] Native ad failed to load, collapsing space:', err);
-              setAdFailed(true);
-              setAdLoaded(false);
-            }}
-          />
-        </View>
+      <View style={adLoaded ? styles.card : styles.offscreenHidden}>
+        <InMobiBannerView
+          placementId={inMobiPlacement}
+          width={300}
+          height={250}
+          onAdLoaded={() => {
+            console.log('[InMobi] Native MRec ad loaded, expanding space');
+            setAdLoaded(true);
+            setAdFailed(false);
+          }}
+          onAdFailedToLoad={(err) => {
+            console.log('[InMobi] Native ad failed to load, collapsing space:', err);
+            setAdFailed(true);
+            setAdLoaded(false);
+          }}
+        />
       </View>
     );
   }
@@ -62,25 +61,23 @@ export const NativeAdCard: React.FC<Props> = ({ placement = 'feed_native' }) => 
   const activeUnitId = __DEV__ ? TestIds.BANNER : ADMOB_CONFIG.AD_UNITS.BANNER;
 
   return (
-    <View style={adLoaded ? styles.card : styles.collapsed}>
-      <View style={adLoaded ? styles.realAdContainer : styles.hiddenAd}>
-        <BannerAd
-          unitId={activeUnitId}
-          size={BannerAdSize.MEDIUM_RECTANGLE}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-          onAdLoaded={() => {
-            setAdLoaded(true);
-            setAdFailed(false);
-          }}
-          onAdFailedToLoad={(error) => {
-            console.log('[AdMob] Native ad failed to load, collapsing space:', error);
-            setAdFailed(true);
-            setAdLoaded(false);
-          }}
-        />
-      </View>
+    <View style={adLoaded ? styles.card : styles.offscreenHidden}>
+      <BannerAd
+        unitId={activeUnitId}
+        size={BannerAdSize.MEDIUM_RECTANGLE}
+        requestOptions={{
+          requestNonPersonalizedAdsOnly: false,
+        }}
+        onAdLoaded={() => {
+          setAdLoaded(true);
+          setAdFailed(false);
+        }}
+        onAdFailedToLoad={(error) => {
+          console.log('[AdMob] Native ad failed to load, collapsing space:', error);
+          setAdFailed(true);
+          setAdLoaded(false);
+        }}
+      />
     </View>
   );
 };
@@ -97,25 +94,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  collapsed: {
-    height: 0,
-    width: 0,
-    padding: 0,
-    margin: 0,
-    marginVertical: 0,
-    borderWidth: 0,
+  offscreenHidden: {
+    position: 'absolute',
+    left: -9999,
+    top: -9999,
+    width: 300,
+    height: 250,
     opacity: 0,
     overflow: 'hidden',
-  },
-  hiddenAd: {
-    height: 0,
-    width: 0,
-    overflow: 'hidden',
-  },
-  realAdContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 250,
   },
 });
