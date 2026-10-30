@@ -26,7 +26,7 @@ interface Props {
   onClose: () => void;
 }
 
-const TARGET_EMAIL = 'ezekielxap@gmail.com';
+const TARGET_EMAIL = 'SupportRemotehq@gmail.com';
 
 const AD_FORMATS = [
   { id: 'BANNER', label: '📌 Feed Banner Ad', desc: 'Anchored and inline display units' },

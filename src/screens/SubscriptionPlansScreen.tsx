@@ -35,6 +35,7 @@ interface Props {
   currentTier: SubscriptionTier;
   onSubscriptionUpdated?: (tier: SubscriptionTier) => void;
   targetTier?: SubscriptionTier;
+  onOpenDirectJobSlot?: () => void;
 }
 
 export const SubscriptionPlansScreen: React.FC<Props> = ({
@@ -43,6 +44,7 @@ export const SubscriptionPlansScreen: React.FC<Props> = ({
   currentTier,
   onSubscriptionUpdated,
   targetTier = 'PREMIUM',
+  onOpenDirectJobSlot,
 }) => {
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>(targetTier);
@@ -221,6 +223,53 @@ export const SubscriptionPlansScreen: React.FC<Props> = ({
             </Text>
             {currentTier === 'PRO' && <Text style={styles.currentBadge}>Current Plan</Text>}
           </TouchableOpacity>
+
+          {/* VIP DIRECT JOB PLACEMENT ($100 ONE-TIME) CARD */}
+          {onOpenDirectJobSlot && (
+            <TouchableOpacity
+              style={[
+                styles.planCard,
+                {
+                  borderColor: '#34D399',
+                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                  marginTop: 6,
+                },
+              ]}
+              onPress={onOpenDirectJobSlot}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.popularBadge, { backgroundColor: '#34D399' }]}>
+                <Text style={[styles.popularBadgeText, { color: '#0F172A' }]}>
+                  1-ON-1 RECRUITMENT CONCIERGE
+                </Text>
+              </View>
+              <View style={styles.planCardHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Sparkles color="#34D399" size={18} style={{ marginRight: 6 }} />
+                  <Text style={[styles.planName, { color: '#34D399', fontSize: 15 }]}>
+                    VIP DIRECT JOB SLOT
+                  </Text>
+                </View>
+                <Text style={[styles.planPrice, { color: '#34D399' }]}>$100 One-Time</Text>
+              </View>
+              <Text style={styles.planTagline}>
+                Our support team personally overhauls your CV, pitches you to employers & coordinates priority interview slots + includes PRO Career access.
+              </Text>
+              <View
+                style={{
+                  marginTop: 10,
+                  backgroundColor: '#34D399',
+                  paddingVertical: 9,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#0F172A', fontSize: 12, fontWeight: '900' }}>
+                  Open VIP Direct Job Connection Slot →
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Categorized Features Breakdown */}

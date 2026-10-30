@@ -156,7 +156,7 @@ export const LandingScreen: React.FC<Props> = ({
               </View>
             </View>
             <Text style={styles.advertiseCtaDesc}>
-              Reach 50k+ active job seekers & remote pros. Send proposals to ezekielxap@gmail.com
+              Reach 50k+ active job seekers & remote pros. Send proposals to SupportRemotehq@gmail.com
             </Text>
           </View>
           <ArrowRight color="#38BDF8" size={16} />

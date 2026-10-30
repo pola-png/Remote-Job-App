@@ -40,6 +40,7 @@ import { PolicyPrivacyScreen } from './src/screens/PolicyPrivacyScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { PostJobScreen } from './src/screens/PostJobScreen';
 import { SubscriptionPlansScreen } from './src/screens/SubscriptionPlansScreen';
+import { DirectJobSlotScreen } from './src/screens/DirectJobSlotScreen';
 import { WatchAdsScreen } from './src/screens/WatchAdsScreen';
 import { InAppNotificationBanner } from './src/components/InAppNotificationBanner';
 import mobileAds from 'react-native-google-mobile-ads';
@@ -55,6 +56,7 @@ type TabType =
   | 'NOTIFICATIONS'
   | 'POST_JOB'
   | 'SUBSCRIPTION'
+  | 'DIRECT_JOB_SLOT'
   | 'WATCH_ADS';
 
 export default function App() {
@@ -381,8 +383,12 @@ export default function App() {
         onDismiss={() => setActiveToast(null)}
       />
 
-      {/* Global Top App Bar (Hidden on Landing, Post Job, Subscription, and Watch Ads screens) */}
-      {currentTab !== 'LANDING' && currentTab !== 'POST_JOB' && currentTab !== 'SUBSCRIPTION' && currentTab !== 'WATCH_ADS' && (
+      {/* Global Top App Bar (Hidden on Landing, Post Job, Subscription, Direct Job Slot, and Watch Ads screens) */}
+      {currentTab !== 'LANDING' &&
+        currentTab !== 'POST_JOB' &&
+        currentTab !== 'SUBSCRIPTION' &&
+        currentTab !== 'DIRECT_JOB_SLOT' &&
+        currentTab !== 'WATCH_ADS' && (
         <View style={styles.globalTopBar}>
           <View style={styles.appNameContainer}>
             <Text style={styles.globalAppName}>Remote Job</Text>
@@ -460,6 +466,29 @@ export default function App() {
                 setTargetSubscriptionTier(tier || 'PREMIUM');
                 navigateToTab('SUBSCRIPTION');
               }}
+              onNavigateToDirectJobSlot={() => {
+                navigateToTab('DIRECT_JOB_SLOT');
+              }}
+            />
+          </View>
+        )}
+
+        {loadedTabs['DIRECT_JOB_SLOT'] && (
+          <View style={[styles.screenWrapper, currentTab !== 'DIRECT_JOB_SLOT' && styles.hiddenScreen]}>
+            <DirectJobSlotScreen
+              userId={session.user.id}
+              userEmail={session?.user?.email}
+              currentTier={profile?.subscriptionTier || 'FREE'}
+              onBack={navigateBack}
+              onNavigateToSubscription={(tier) => {
+                setTargetSubscriptionTier(tier || 'PRO');
+                navigateToTab('SUBSCRIPTION');
+              }}
+              onSubscriptionUpdated={(newTier) => {
+                if (profile) {
+                  setProfile({ ...profile, subscriptionTier: newTier });
+                }
+              }}
             />
           </View>
         )}
@@ -483,6 +512,7 @@ export default function App() {
               currentTier={profile?.subscriptionTier || 'FREE'}
               targetTier={targetSubscriptionTier}
               onBack={navigateBack}
+              onOpenDirectJobSlot={() => navigateToTab('DIRECT_JOB_SLOT')}
               onSubscriptionUpdated={(newTier) => {
                 if (profile) {
                   setProfile({ ...profile, subscriptionTier: newTier });

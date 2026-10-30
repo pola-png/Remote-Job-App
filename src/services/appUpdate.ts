@@ -15,8 +15,8 @@ export interface AppUpdateInfo {
   playStoreUrl: string;
 }
 
-export const CURRENT_APP_VERSION = '30.0.25';
-export const CURRENT_VERSION_CODE = 70;
+export const CURRENT_APP_VERSION = '30.0.26';
+export const CURRENT_VERSION_CODE = 71;
 export const PLAY_STORE_PACKAGE_NAME = 'com.xapzap.app';
 export const PLAY_STORE_MARKET_URL = `market://details?id=${PLAY_STORE_PACKAGE_NAME}`;
 export const PLAY_STORE_WEB_URL = `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE_NAME}`;

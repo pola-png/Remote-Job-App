@@ -82,19 +82,42 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
                 .build()
         )
 
-        val params = QueryProductDetailsParams.newBuilder()
+        val subsParams = QueryProductDetailsParams.newBuilder()
             .setProductList(subscriptionList)
             .build()
 
-        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsResult ->
+        billingClient?.queryProductDetailsAsync(subsParams) { billingResult, productDetailsResult ->
             val list = productDetailsResult.productDetailsList ?: emptyList()
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && list.isNotEmpty()) {
                 list.forEach { details ->
                     productDetailsMap[details.productId] = details
-                    Log.d(TAG, "Loaded product details for: ${details.productId}")
+                    Log.d(TAG, "Loaded SUBS product details for: ${details.productId}")
                 }
             } else {
-                Log.w(TAG, "Failed to load product details: ${billingResult.debugMessage}")
+                Log.w(TAG, "Failed to load SUBS product details: ${billingResult.debugMessage}")
+            }
+        }
+
+        val inAppList = listOf(
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId("vip_direct_job_slot_100")
+                .setProductType(BillingClient.ProductType.INAPP)
+                .build()
+        )
+
+        val inAppParams = QueryProductDetailsParams.newBuilder()
+            .setProductList(inAppList)
+            .build()
+
+        billingClient?.queryProductDetailsAsync(inAppParams) { billingResult, productDetailsResult ->
+            val list = productDetailsResult.productDetailsList ?: emptyList()
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && list.isNotEmpty()) {
+                list.forEach { details ->
+                    productDetailsMap[details.productId] = details
+                    Log.d(TAG, "Loaded INAPP product details for: ${details.productId}")
+                }
+            } else {
+                Log.w(TAG, "Failed to load INAPP product details: ${billingResult.debugMessage}")
             }
         }
     }
@@ -211,20 +234,76 @@ class GooglePlayBillingModule(private val reactContext: ReactApplicationContext)
         }
     }
 
-    private fun executeBillingFlow(activity: Activity, productDetails: ProductDetails) {
-        val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
-        if (offerToken == null) {
-            currentPurchasePromise?.reject("NO_OFFER_TOKEN", "No subscription offer available for ${productDetails.productId}")
-            currentPurchasePromise = null
+    @ReactMethod
+    fun purchaseOneTimeProduct(productId: String, promise: Promise) {
+        val activity = currentActivity
+        if (activity == null) {
+            promise.reject("ACTIVITY_NULL", "Activity is null")
             return
         }
 
-        val productDetailsParamsList = listOf(
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
-                .setOfferToken(offerToken)
-                .build()
-        )
+        currentPurchasePromise = promise
+
+        val launchFlow: () -> Unit = {
+            val productDetails = productDetailsMap[productId]
+            if (productDetails == null) {
+                val params = QueryProductDetailsParams.newBuilder()
+                    .setProductList(
+                        listOf(
+                            QueryProductDetailsParams.Product.newBuilder()
+                                .setProductId(productId)
+                                .setProductType(BillingClient.ProductType.INAPP)
+                                .build()
+                        )
+                    )
+                    .build()
+
+                billingClient?.queryProductDetailsAsync(params) { _, productDetailsResult ->
+                    val details = productDetailsResult.productDetailsList?.firstOrNull()
+                    if (details != null) {
+                        productDetailsMap[productId] = details
+                        executeBillingFlow(activity, details)
+                    } else {
+                        currentPurchasePromise?.reject(
+                            "PRODUCT_NOT_FOUND",
+                            "Payment service is currently unavailable. Please check your Google Play account or try again shortly."
+                        )
+                        currentPurchasePromise = null
+                    }
+                }
+            } else {
+                executeBillingFlow(activity, productDetails)
+            }
+        }
+
+        if (isConnected && billingClient?.isReady == true) {
+            launchFlow()
+        } else {
+            startConnection(launchFlow)
+        }
+    }
+
+    private fun executeBillingFlow(activity: Activity, productDetails: ProductDetails) {
+        val productDetailsParamsBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(productDetails)
+
+        if (productDetails.productType == BillingClient.ProductType.SUBS) {
+            val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
+            if (offerToken == null) {
+                currentPurchasePromise?.reject("NO_OFFER_TOKEN", "No subscription offer available for ${productDetails.productId}")
+                currentPurchasePromise = null
+                return
+            }
+            productDetailsParamsBuilder.setOfferToken(offerToken)
+        } else if (productDetails.productType == BillingClient.ProductType.INAPP) {
+            val inAppOfferToken = productDetails.oneTimePurchaseOfferDetailsList?.firstOrNull()?.offerToken
+                ?: productDetails.oneTimePurchaseOfferDetails?.offerToken
+            if (!inAppOfferToken.isNullOrBlank()) {
+                productDetailsParamsBuilder.setOfferToken(inAppOfferToken)
+            }
+        }
+
+        val productDetailsParamsList = listOf(productDetailsParamsBuilder.build())
 
         val billingFlowParams = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(productDetailsParamsList)

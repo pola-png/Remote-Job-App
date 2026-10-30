@@ -151,7 +151,26 @@ export const SUBSCRIPTION_SKUS = {
   PREMIUM_YEARLY: 'premium_yearly',
   PRO_MONTHLY: 'pro_monthly',
   PRO_YEARLY: 'pro_yearly',
+  VIP_DIRECT_SLOT_100: 'vip_direct_job_slot_100',
 } as const;
+
+export interface VipDirectSlotIntake {
+  fullName: string;
+  email: string;
+  whatsappOrPhone: string;
+  targetRole: string;
+  experienceLevel: string;
+  resumeOrLinkedinUrl: string;
+  notes?: string;
+}
+
+export interface VipDirectSlotState {
+  isActive: boolean;
+  orderId?: string;
+  purchasedAt?: string;
+  status: 'NOT_PURCHASED' | 'AWAITING_INTAKE' | 'TEAM_ASSIGNED';
+  intake?: VipDirectSlotIntake;
+}
 
 export function getSkuForPlan(tier: SubscriptionTier, cycle: BillingCycle = 'monthly'): string | null {
   if (tier === 'PREMIUM') {
@@ -324,5 +343,57 @@ export const SubscriptionService = {
 
   canAccessAdvancedFilters(tier: SubscriptionTier): boolean {
     return tier === 'PREMIUM' || tier === 'PRO';
+  },
+
+  async getVipDirectSlot(userId: string): Promise<VipDirectSlotState> {
+    const cacheKey = `vip_direct_slot_${userId}`;
+    const cached = await MemoryAndDiskCache.get<VipDirectSlotState>(cacheKey, 1000 * 60 * 60 * 24 * 365);
+    if (cached) return cached;
+
+    return {
+      isActive: false,
+      status: 'NOT_PURCHASED',
+    };
+  },
+
+  async activateVipDirectSlot(
+    userId: string,
+    orderId?: string
+  ): Promise<VipDirectSlotState> {
+    const cacheKey = `vip_direct_slot_${userId}`;
+    const existing = await this.getVipDirectSlot(userId);
+    const updated: VipDirectSlotState = {
+      ...existing,
+      isActive: true,
+      orderId: orderId || existing.orderId || `VIP-${Date.now().toString().slice(-6)}`,
+      purchasedAt: existing.purchasedAt || new Date().toISOString(),
+      status: existing.intake ? 'TEAM_ASSIGNED' : 'AWAITING_INTAKE',
+    };
+
+    await MemoryAndDiskCache.set(cacheKey, updated);
+
+    // Also unlock PRO Career benefits automatically for VIP Direct Slot buyers
+    await this.upgradeSubscription(userId, 'PRO', 'yearly');
+
+    return updated;
+  },
+
+  async submitVipDirectSlotIntake(
+    userId: string,
+    intake: VipDirectSlotIntake
+  ): Promise<VipDirectSlotState> {
+    const cacheKey = `vip_direct_slot_${userId}`;
+    const existing = await this.getVipDirectSlot(userId);
+    const updated: VipDirectSlotState = {
+      ...existing,
+      isActive: true,
+      orderId: existing.orderId || `VIP-${Date.now().toString().slice(-6)}`,
+      purchasedAt: existing.purchasedAt || new Date().toISOString(),
+      status: 'TEAM_ASSIGNED',
+      intake,
+    };
+
+    await MemoryAndDiskCache.set(cacheKey, updated);
+    return updated;
   },
 };

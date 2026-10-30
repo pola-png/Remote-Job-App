@@ -56,6 +56,7 @@ interface Props {
   onToggleSearch?: () => void;
   onNavigateToPostJob?: () => void;
   onNavigateToSubscription?: (targetTier?: SubscriptionTier) => void;
+  onNavigateToDirectJobSlot?: () => void;
   isActive?: boolean;
 }
 
@@ -91,6 +92,7 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
   onToggleSearch,
   onNavigateToPostJob,
   onNavigateToSubscription,
+  onNavigateToDirectJobSlot,
   isActive,
 }: Props) => {
   const [jobs, setJobs] = useState<RemoteJob[]>([]);
@@ -401,30 +403,43 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
           )}
         </View>
 
-        {userSubscription.tier === 'FREE' ? (
-          <TouchableOpacity
-            style={styles.upgradeBtn}
-            onPress={() => {
-              if (onNavigateToSubscription) onNavigateToSubscription('PRO');
-              else setShowSubscriptionModal(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <Crown color="#0F172A" size={12} style={{ marginRight: 4 }} />
-            <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.managePlanBtn}
-            onPress={() => {
-              if (onNavigateToSubscription) onNavigateToSubscription(userSubscription.tier);
-              else setShowSubscriptionModal(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.managePlanBtnText}>Manage Plan</Text>
-          </TouchableOpacity>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {onNavigateToDirectJobSlot && (
+            <TouchableOpacity
+              style={styles.directSlotStripBtn}
+              onPress={onNavigateToDirectJobSlot}
+              activeOpacity={0.85}
+            >
+              <Sparkles color="#0F172A" size={11} style={{ marginRight: 3 }} />
+              <Text style={styles.directSlotStripBtnText}>Direct Job Slot</Text>
+            </TouchableOpacity>
+          )}
+
+          {userSubscription.tier === 'FREE' ? (
+            <TouchableOpacity
+              style={styles.upgradeBtn}
+              onPress={() => {
+                if (onNavigateToSubscription) onNavigateToSubscription('PRO');
+                else setShowSubscriptionModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Crown color="#0F172A" size={12} style={{ marginRight: 4 }} />
+              <Text style={styles.upgradeBtnText}>Upgrade Plan</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.managePlanBtn}
+              onPress={() => {
+                if (onNavigateToSubscription) onNavigateToSubscription(userSubscription.tier);
+                else setShowSubscriptionModal(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.managePlanBtnText}>Manage Plan</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Category & Smart Filter Row */}
@@ -649,6 +664,77 @@ export const RemoteJobsListingScreen: React.FC<Props> = ({
                   )}
                 </View>
               </TouchableOpacity>
+
+              {/* In-Feed Direct Job Slot & Fast-Track Plan Promo Card (after Job #1 and every 3 jobs) */}
+              {(index === 0 || (index + 1) % 3 === 1) && (
+                <TouchableOpacity
+                  style={[
+                    styles.inFeedSlotCard,
+                    index % 2 === 1 && styles.inFeedSlotCardPro,
+                  ]}
+                  onPress={() => {
+                    if (onNavigateToDirectJobSlot) {
+                      onNavigateToDirectJobSlot();
+                    } else if (onNavigateToSubscription) {
+                      onNavigateToSubscription('PRO');
+                    } else {
+                      setShowSubscriptionModal(true);
+                    }
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.inFeedSlotTopRow}>
+                    <View
+                      style={[
+                        styles.inFeedSlotBadge,
+                        index % 2 === 1 && { backgroundColor: '#FBBF24' },
+                      ]}
+                    >
+                      <Crown color="#0F172A" size={11} style={{ marginRight: 4 }} />
+                      <Text style={styles.inFeedSlotBadgeText}>
+                        {index % 2 === 0
+                          ? 'VIP DIRECT JOB PLACEMENT SLOT'
+                          : 'SKIP THE STRESS • FAST-TRACK CAREER'}
+                      </Text>
+                    </View>
+                    <Text style={styles.inFeedSlotPriceTag}>
+                      {index % 2 === 0 ? '$100 One-Time' : 'From $4.99/mo'}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.inFeedSlotTitle}>
+                    {index % 2 === 0
+                      ? '🎯 Want Our Recruitment Team to Land You a Direct Remote Job Slot?'
+                      : '⚡ Upgrade to Get Direct Job Slots & Employer Priority Without Stress'}
+                  </Text>
+                  <Text style={styles.inFeedSlotDesc}>
+                    {index % 2 === 0
+                      ? 'Skip hundreds of unanswered applications. Our support team personally overhauls your CV, pitches you to verified remote employers, and secures priority interview slots (+ includes Pro Career).'
+                      : 'Unlock instant ad-free direct apply, 3-hour early access to newly posted jobs, AI skill match scores, and Featured Candidate visibility—or book a 1-on-1 VIP Direct Job Slot.'}
+                  </Text>
+
+                  <View style={styles.inFeedSlotFooter}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <ShieldCheck color="#34D399" size={14} style={{ marginRight: 5 }} />
+                      <Text style={styles.inFeedSlotFooterNote} numberOfLines={1}>
+                        {index % 2 === 0
+                          ? '1-on-1 Human Support + Pro Career Included'
+                          : 'Instant Activation via Google Play'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.inFeedSlotCtaBtn,
+                        index % 2 === 1 && { backgroundColor: '#FBBF24' },
+                      ]}
+                    >
+                      <Text style={styles.inFeedSlotCtaBtnText}>
+                        {index % 2 === 0 ? 'Get Direct Slot →' : 'View Plans & Slot →'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
 
               {/* Feed Sponsored Ad after every 2 jobs */}
               {shouldShowAd && (
@@ -1240,5 +1326,100 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 11,
     marginTop: 2,
+  },
+  directSlotStripBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34D399',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+  },
+  directSlotStripBtnText: {
+    color: '#0F172A',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  inFeedSlotCard: {
+    backgroundColor: '#131C31',
+    borderRadius: 16,
+    padding: 15,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inFeedSlotCardPro: {
+    borderColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+  },
+  inFeedSlotTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  inFeedSlotBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#34D399',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  inFeedSlotBadgeText: {
+    color: '#0F172A',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  inFeedSlotPriceTag: {
+    color: '#FBBF24',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  inFeedSlotTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 21,
+    marginBottom: 6,
+  },
+  inFeedSlotDesc: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  inFeedSlotFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(148, 163, 184, 0.15)',
+    paddingTop: 10,
+  },
+  inFeedSlotFooterNote: {
+    color: '#34D399',
+    fontSize: 11,
+    fontWeight: '700',
+    marginRight: 8,
+  },
+  inFeedSlotCtaBtn: {
+    backgroundColor: '#34D399',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  inFeedSlotCtaBtnText: {
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });

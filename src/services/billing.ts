@@ -3,6 +3,7 @@ import {
   SubscriptionService,
   SubscriptionTier,
   BillingCycle,
+  SUBSCRIPTION_SKUS,
   getSkuForPlan,
   getPlanForSku,
   PLAN_PRICING,
@@ -108,6 +109,54 @@ export const BillingService = {
   },
 
   /**
+   * Initiates $100 One-Time VIP Direct Job Placement Slot purchase via Google Play Billing
+   */
+  async purchaseVipDirectJobSlot(userId: string): Promise<PurchaseResult> {
+    const sku = SUBSCRIPTION_SKUS.VIP_DIRECT_SLOT_100;
+
+    if (Platform.OS === 'android' && GooglePlayBillingModule) {
+      try {
+        const purchaseFn =
+          GooglePlayBillingModule.purchaseOneTimeProduct ||
+          GooglePlayBillingModule.purchaseSubscription;
+        const purchase = await purchaseFn(sku);
+        if (purchase && purchase.purchaseToken) {
+          await SubscriptionService.activateVipDirectSlot(userId, purchase.orderId);
+          return {
+            success: true,
+            message:
+              '🎉 VIP Direct Job Connection Slot reserved! Our Career & Recruitment Team is ready to receive your intake details.',
+            orderId: purchase.orderId,
+            purchaseToken: purchase.purchaseToken,
+            tier: 'PRO',
+          };
+        }
+        return {
+          success: false,
+          message: 'Payment verification failed. Please try again.',
+        };
+      } catch (err: any) {
+        if (err.message && err.message.includes('canceled')) {
+          return { success: false, message: 'Purchase was canceled.' };
+        }
+
+        console.warn('[BillingService] VIP Direct Slot purchase error:', err.message);
+        return {
+          success: false,
+          message:
+            err.message ||
+            'Payment could not be completed. Please ensure your Google Play account has an active payment method.',
+        };
+      }
+    }
+
+    return {
+      success: false,
+      message: 'In-app purchases are only available on Android devices.',
+    };
+  },
+
+  /**
    * Listens for asynchronous purchase updates from Google Play
    */
   registerPurchaseListener(onSuccess: (tier: SubscriptionTier) => void) {
@@ -117,6 +166,10 @@ export const BillingService = {
       'onPlayStorePurchaseSuccess',
       (purchase: any) => {
         if (purchase && purchase.productId) {
+          if (purchase.productId === SUBSCRIPTION_SKUS.VIP_DIRECT_SLOT_100) {
+            onSuccess('PRO');
+            return;
+          }
           const plan = getPlanForSku(purchase.productId);
           if (plan) {
             onSuccess(plan.tier);
