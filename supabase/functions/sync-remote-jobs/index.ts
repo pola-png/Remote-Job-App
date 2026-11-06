@@ -282,7 +282,7 @@ async function fetchExternalFeeds() {
           salary_min: minSal,
           salary_max: maxSal,
           category: normalizeCategory(rawCat || item.title),
-          tags: [rawCat || "Remote", "RemoteJobs.org"].filter(Boolean),
+          tags: [rawCat || "Remote"].filter(Boolean),
           description: stripHtml(item.description || "").slice(0, 3000),
           requirements: [
             "Demonstrated competence and practical domain experience.",

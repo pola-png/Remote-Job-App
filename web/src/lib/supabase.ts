@@ -7,6 +7,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface RemoteJob {
   id: string;
+  public_ref: string;
   title: string;
   company: string;
   company_logo?: string;
@@ -19,16 +20,150 @@ export interface RemoteJob {
   category?: string;
   tags?: string[];
   description: string;
-  requirements?: string[] | string;
-  benefits?: string[] | string;
+  requirements?: string[];
+  benefits?: string[];
+  responsibilities?: string[];
   apply_url?: string;
   direct_apply_url?: string;
+  has_direct_employer_url?: boolean;
   is_featured?: boolean;
   is_verified_employer?: boolean;
   status?: string;
   created_at: string;
   posted_timestamp?: number;
   slug?: string;
+}
+
+const AGGREGATOR_NAMES_REGEX = /\b(?:jobicy|himalayas\.app|himalayas|remotive\.com|remotive\.io|remotive|remotejobs\.org|remoteok|weworkremotely|arbeitnow)\b/gi;
+const AGGREGATOR_DOMAINS = [
+  'himalayas.app',
+  'jobicy.com',
+  'remotive.com',
+  'remotive.io',
+  'remotejobs.org',
+  'arbeitnow.com',
+  'remoteok.com',
+  'weworkremotely.com',
+];
+
+const BOILERPLATE_REQ_FRAGMENTS = [
+  'demonstrated expertise in relevant discipline',
+  'demonstrated experience in relevant discipline',
+  'strong background and domain competence in the role',
+  'relevant practical experience and proven skillset',
+  'demonstrated competence and practical domain experience',
+  'relevant professional experience and domain competence',
+];
+
+export function getPublicJobRef(rawId?: string): string {
+  const str = String(rawId || 'remotejob');
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const code = Math.abs(hash >>> 0).toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
+  return `RJHQ-${code}`;
+}
+
+export function getShortJobHash(rawId?: string): string {
+  const str = String(rawId || 'job');
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return Math.abs(hash >>> 0).toString(36).toLowerCase().slice(0, 6);
+}
+
+export function sanitizeJobText(text?: string): string {
+  if (!text) return '';
+  return text
+    .replace(/https?:\/\/(?:www\.)?(?:himalayas\.app|jobicy\.com|remotive\.com|remotive\.io|remotejobs\.org|arbeitnow\.com)[^\s)"]*/gi, '')
+    .replace(/(?:found on|via|source:|posted on|originally posted on|apply on|visit)\s+(?:jobicy|himalayas|remotive|remotejobs\.org|arbeitnow)[^\n.]*/gi, '')
+    .replace(/please mention (?:remotive|jobicy|himalayas|remotejobs\.org)[^\n.]*/gi, '')
+    .replace(AGGREGATOR_NAMES_REGEX, 'Remote Jobs HQ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+export function sanitizeTagLabel(tag: string): string {
+  if (!tag) return '';
+  let cleaned = tag
+    .replace(AGGREGATOR_NAMES_REGEX, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (cleaned.length < 2 || cleaned.length > 32) return '';
+  return cleaned
+    .split(' ')
+    .map((w) => (w.length <= 3 && w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ');
+}
+
+export function sanitizeTags(rawTags: any, category?: string): string[] {
+  const list = Array.isArray(rawTags) ? rawTags : [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const t of list) {
+    if (typeof t !== 'string') continue;
+    if (AGGREGATOR_NAMES_REGEX.test(t)) {
+      AGGREGATOR_NAMES_REGEX.lastIndex = 0;
+      continue;
+    }
+    const label = sanitizeTagLabel(t);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(label);
+    }
+    if (result.length >= 5) break;
+  }
+
+  if (result.length === 0 && category) {
+    result.push(sanitizeTagLabel(category) || 'Remote');
+  }
+  return result;
+}
+
+export function sanitizeApplyUrl(rawUrl?: string): { cleanUrl?: string; isDirectEmployerUrl: boolean } {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return { cleanUrl: undefined, isDirectEmployerUrl: false };
+  }
+  const trimmed = rawUrl.trim();
+  if (trimmed.startsWith('mailto:')) {
+    return { cleanUrl: trimmed, isDirectEmployerUrl: true };
+  }
+  try {
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+    const isAggregator = AGGREGATOR_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+    if (isAggregator) {
+      // Never expose third-party aggregator URLs to the browser
+      return { cleanUrl: undefined, isDirectEmployerUrl: false };
+    }
+    // Strip tracking parameters
+    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'ref', 'source'].forEach((param) =>
+      parsed.searchParams.delete(param)
+    );
+    return { cleanUrl: parsed.toString(), isDirectEmployerUrl: true };
+  } catch {
+    return { cleanUrl: undefined, isDirectEmployerUrl: false };
+  }
+}
+
+export function isAuthenticJobRow(row: any): boolean {
+  if (!row || !row.title || !row.company) return false;
+  const title = String(row.title).trim();
+  const company = String(row.company).trim();
+  if (title.length < 3 || company.length < 2) return false;
+  // Filter out test/junk rows that have no standard Latin letters (e.g. 'ቪዲዮ')
+  if (!/[a-zA-Z]{2,}/.test(title)) return false;
+  if (company.toLowerCase() === 'micirotasks') return false;
+  return true;
 }
 
 export function slugify(text: string): string {
@@ -80,44 +215,10 @@ export function formatSalarySlug(job: {
     }
   }
 
-  // Provide realistic market benchmark for role if not specified so every URL has a high-intent salary keyword
   if (!min && !max) {
-    const title = (job.title || '').toLowerCase();
-    const cat = (job.category || '').toLowerCase();
-    if (title.includes('devops') || title.includes('sre') || title.includes('cloud') || title.includes('security')) {
-      min = 110000;
-      max = 175000;
-    } else if (title.includes('engineer') || title.includes('developer') || title.includes('architect') || cat.includes('development') || cat.includes('engineering')) {
-      min = 95000;
-      max = 165000;
-    } else if (title.includes('product') || title.includes('program manager')) {
-      min = 100000;
-      max = 160000;
-    } else if (title.includes('data') || title.includes('ai') || title.includes('machine learning')) {
-      min = 105000;
-      max = 175000;
-    } else if (title.includes('design') || title.includes('ui') || title.includes('ux') || cat.includes('design')) {
-      min = 75000;
-      max = 135000;
-    } else if (title.includes('marketing') || title.includes('growth') || title.includes('seo') || cat.includes('marketing')) {
-      min = 65000;
-      max = 120000;
-    } else if (title.includes('sales') || title.includes('account executive') || cat.includes('sales')) {
-      min = 70000;
-      max = 130000;
-    } else if (title.includes('support') || title.includes('customer success') || cat.includes('support')) {
-      min = 45000;
-      max = 85000;
-    } else if (title.includes('writer') || title.includes('content') || cat.includes('writing')) {
-      min = 50000;
-      max = 95000;
-    } else if (title.includes('finance') || title.includes('accounting') || cat.includes('finance')) {
-      min = 70000;
-      max = 130000;
-    } else {
-      min = 60000;
-      max = 120000;
-    }
+    const benchmark = getEstimatedSalaryBenchmark(job.title, job.category);
+    min = benchmark.min;
+    max = benchmark.max;
   }
 
   if ((max && max <= 500) || (min && min <= 500) || text.includes('/HR') || text.includes('HOUR')) {
@@ -130,6 +231,49 @@ export function formatSalarySlug(job: {
     return `${formatK(min)}-${formatK(max)}`;
   }
   return formatK(min || max || 0);
+}
+
+export function getEstimatedSalaryBenchmark(titleRaw?: string, categoryRaw?: string): { min: number; max: number; label: string } {
+  const title = (titleRaw || '').toLowerCase();
+  const cat = (categoryRaw || '').toLowerCase();
+
+  if (title.includes('director') || title.includes('vp') || title.includes('head of') || title.includes('principal') || title.includes('staff')) {
+    return { min: 145000, max: 215000, label: '$145,000 - $215,000 / yr' };
+  }
+  if (title.includes('devops') || title.includes('sre') || title.includes('cloud') || title.includes('security') || title.includes('cyber')) {
+    return { min: 115000, max: 175000, label: '$115,000 - $175,000 / yr' };
+  }
+  if (title.includes('senior') && (title.includes('engineer') || title.includes('developer') || title.includes('architect'))) {
+    return { min: 125000, max: 185000, label: '$125,000 - $185,000 / yr' };
+  }
+  if (title.includes('engineer') || title.includes('developer') || title.includes('architect') || cat.includes('development') || cat.includes('engineering')) {
+    return { min: 95000, max: 160000, label: '$95,000 - $160,000 / yr' };
+  }
+  if (title.includes('product') || title.includes('program manager') || title.includes('project manager')) {
+    return { min: 100000, max: 160000, label: '$100,000 - $160,000 / yr' };
+  }
+  if (title.includes('data') || title.includes('ai') || title.includes('machine learning') || title.includes('analytics') || cat.includes('data')) {
+    return { min: 105000, max: 170000, label: '$105,000 - $170,000 / yr' };
+  }
+  if (title.includes('design') || title.includes('ui') || title.includes('ux') || cat.includes('design')) {
+    return { min: 80000, max: 135000, label: '$80,000 - $135,000 / yr' };
+  }
+  if (title.includes('marketing') || title.includes('growth') || title.includes('seo') || cat.includes('marketing')) {
+    return { min: 70000, max: 125000, label: '$70,000 - $125,000 / yr' };
+  }
+  if (title.includes('sales') || title.includes('account executive') || title.includes('business development') || cat.includes('sales')) {
+    return { min: 75000, max: 140000, label: '$75,000 - $140,000 / yr' };
+  }
+  if (title.includes('support') || title.includes('customer success') || title.includes('account manager') || cat.includes('support')) {
+    return { min: 52000, max: 90000, label: '$52,000 - $90,000 / yr' };
+  }
+  if (title.includes('writer') || title.includes('content') || title.includes('editor') || cat.includes('writing')) {
+    return { min: 58000, max: 98000, label: '$58,000 - $98,000 / yr' };
+  }
+  if (title.includes('finance') || title.includes('accounting') || title.includes('controller') || cat.includes('finance')) {
+    return { min: 75000, max: 135000, label: '$75,000 - $135,000 / yr' };
+  }
+  return { min: 65000, max: 120000, label: '$65,000 - $120,000 / yr' };
 }
 
 export function formatLocationSlug(loc?: string): string {
@@ -175,11 +319,9 @@ export function buildSeoJobSlug(job: {
 }): string {
   const parts: string[] = [];
 
-  // 1. Job Title
   const titleSlug = slugify(job.title || 'remote-job');
   parts.push(titleSlug);
 
-  // 2. Company Name
   if (job.company && job.company !== 'Hiring Company') {
     const compSlug = slugify(job.company);
     if (compSlug && !titleSlug.includes(compSlug)) {
@@ -187,26 +329,22 @@ export function buildSeoJobSlug(job: {
     }
   }
 
-  // 3. Workplace Type ('remote', 'onsite', 'hybrid')
   const wp = getWorkplaceSlug(job);
   if (!titleSlug.includes(wp)) {
     parts.push(wp);
   }
 
-  // 4. Country / Anywhere
   const locSlug = formatLocationSlug(job.location);
   if (locSlug && !titleSlug.includes(locSlug) && !parts.includes(locSlug)) {
     parts.push(locSlug);
   }
 
-  // 5. Job Type (full-time, contract, part-time, internship)
   const type = (job.job_type || '').toLowerCase();
   if (type.includes('part')) parts.push('part-time');
   else if (type.includes('contract') || type.includes('freelance')) parts.push('contract');
   else if (type.includes('intern')) parts.push('internship');
   else if (!titleSlug.includes('full-time')) parts.push('full-time');
 
-  // 6. Salary if available
   const salarySlug = formatSalarySlug(job);
   if (salarySlug) {
     parts.push(salarySlug);
@@ -220,32 +358,143 @@ export function getJobSlug(job: Partial<RemoteJob> | any): string {
   return buildSeoJobSlug(job);
 }
 
+function buildTailoredJobLists(row: any, cleanTags: string[]): {
+  requirements: string[];
+  benefits: string[];
+  responsibilities: string[];
+} {
+  const title = row.title || 'Remote Specialist';
+  const company = row.company || 'the organization';
+  const cat = (row.category || 'DEVELOPMENT').toUpperCase();
+  const loc = row.location || 'Remote (Worldwide)';
+  const tagSummary = cleanTags.length > 0 ? cleanTags.slice(0, 3).join(', ') : 'modern cloud & collaboration tools';
+
+  const rawReqs = Array.isArray(row.requirements)
+    ? row.requirements
+    : typeof row.requirements === 'string'
+    ? [row.requirements]
+    : [];
+
+  const isGenericReq =
+    rawReqs.length === 0 ||
+    rawReqs.some((r: string) =>
+      BOILERPLATE_REQ_FRAGMENTS.some((frag) => String(r).toLowerCase().includes(frag))
+    );
+
+  let requirements: string[] = [];
+  if (!isGenericReq) {
+    requirements = rawReqs.map((r: string) => sanitizeJobText(r)).filter(Boolean);
+  } else {
+    if (cat === 'DEVELOPMENT') {
+      requirements = [
+        `Proven hands-on production experience in ${title} roles or closely related software engineering disciplines (${tagSummary}).`,
+        `Strong architectural understanding of scalable systems, automated testing, code reviews, and CI/CD delivery pipelines.`,
+        `Track record of shipping reliable features asynchronously within distributed engineering teams at companies like ${company}.`,
+        `Clear written and verbal technical communication skills for RFCs, system documentation, and cross-functional planning.`,
+        `Comfort working independently in a remote environment (${loc}) with strong ownership of production quality.`,
+      ];
+    } else if (cat === 'DESIGN') {
+      requirements = [
+        `Strong portfolio demonstrating end-to-end user experience, interaction design, and design systems expertise relevant to ${title}.`,
+        `Proficiency with modern collaborative design and prototyping workflows (${tagSummary}, Figma, user research synthesis).`,
+        `Ability to translate complex product workflows into intuitive, accessible interfaces alongside product and engineering partners at ${company}.`,
+        `Experience conducting usability testing, iterating from quantitative/qualitative feedback, and maintaining visual consistency.`,
+        `Excellent asynchronous presentation and documentation skills suited for a ${loc} team.`,
+      ];
+    } else if (cat === 'DATA') {
+      requirements = [
+        `Demonstrated experience in ${title} workflows, including data modeling, statistical analysis, or ML/AI pipelines (${tagSummary}).`,
+        `High proficiency with SQL, Python, or modern cloud data warehouses, ETL orchestration, and business intelligence tooling.`,
+        `Ability to partner with stakeholders at ${company} to translate ambiguous business questions into actionable metrics and models.`,
+        `Strong focus on data governance, reproducibility, pipeline reliability, and clear executive reporting.`,
+        `Self-directed work style suited for distributed collaboration across ${loc}.`,
+      ];
+    } else if (cat === 'MARKETING' || cat === 'WRITING') {
+      requirements = [
+        `Proven track record executing high-impact campaigns, content strategy, or growth initiatives as a ${title} (${tagSummary}).`,
+        `Strong analytical mindset with experience measuring attribution, conversion funnels, organic reach, and ROI.`,
+        `Exceptional storytelling, editorial precision, and brand voice consistency tailored to ${company}'s target audience.`,
+        `Ability to collaborate asynchronously with product, design, and leadership teams across ${loc}.`,
+      ];
+    } else if (cat === 'SALES') {
+      requirements = [
+        `Demonstrated quota-carrying or pipeline-generation success in a ${title} capacity (${tagSummary}).`,
+        `Strong consultative discovery, executive presentation, and relationship management skills across full sales cycles.`,
+        `Experience maintaining accurate CRM hygiene, forecasting, and collaborating with revenue operations at ${company}.`,
+        `Self-motivated, results-driven approach optimized for remote client engagement (${loc}).`,
+      ];
+    } else {
+      requirements = [
+        `Proven professional background and domain mastery directly relevant to the ${title} position at ${company}.`,
+        `Hands-on familiarity with modern remote workflows and core functional stacks (${tagSummary}).`,
+        `Exceptional written and verbal communication skills for asynchronous documentation and stakeholder updates.`,
+        `High reliability, attention to detail, and ability to prioritize competing deliverables independently (${loc}).`,
+      ];
+    }
+  }
+
+  const responsibilities = [
+    `Lead day-to-day execution and strategic deliverables for the ${title} function within ${company}'s distributed organization.`,
+    `Collaborate asynchronously and in real time with cross-functional peers across ${ tagSummary } to hit quarterly roadmap milestones.`,
+    `Document processes, decisions, and best practices clearly so global team members across ${loc} stay aligned.`,
+    `Continuously identify opportunities to improve quality, operational velocity, and customer impact.`,
+  ];
+
+  const benefits = [
+    `Remote-first work culture (${loc}) with flexible scheduling built around deep work and measurable outcomes.`,
+    `Competitive compensation package benchmarked to global remote market standards for ${title} professionals.`,
+    `Comprehensive health, wellness, and paid time off policies supporting long-term work-life balance.`,
+    `Home office setup & continuous learning allowances to support your professional growth at ${company}.`,
+  ];
+
+  return { requirements, benefits, responsibilities };
+}
+
 export function mapJobRow(row: any): RemoteJob {
-  const title = row.title || 'Remote Position';
+  const title = sanitizeJobText(row.title) || 'Remote Position';
+  const company = sanitizeJobText(row.company) || 'Hiring Company';
+  const cleanTags = sanitizeTags(row.tags, row.category);
+  const { cleanUrl, isDirectEmployerUrl } = sanitizeApplyUrl(row.direct_apply_url || row.apply_url);
+
+  const rawSalary = row.salary_range || row.salary;
+  const benchmark = getEstimatedSalaryBenchmark(title, row.category);
+  const displaySalary =
+    rawSalary && !String(rawSalary).toLowerCase().includes('competitive')
+      ? String(rawSalary).trim()
+      : benchmark.label;
+
+  const { requirements, benefits, responsibilities } = buildTailoredJobLists(
+    { ...row, title, company },
+    cleanTags
+  );
+
   return {
     id: row.id,
+    public_ref: getPublicJobRef(row.id),
     title,
-    company: row.company || 'Hiring Company',
+    company,
     company_logo: row.company_logo || undefined,
-    location: row.location || '100% Remote / Worldwide',
-    salary: row.salary_range || row.salary || undefined,
-    salary_range: row.salary_range || row.salary || undefined,
-    salary_min: typeof row.salary_min === 'number' ? row.salary_min : (row.salary_min ? Number(row.salary_min) : undefined),
-    salary_max: typeof row.salary_max === 'number' ? row.salary_max : (row.salary_max ? Number(row.salary_max) : undefined),
+    location: sanitizeJobText(row.location) || '100% Remote / Worldwide',
+    salary: displaySalary,
+    salary_range: displaySalary,
+    salary_min: typeof row.salary_min === 'number' ? row.salary_min : (row.salary_min ? Number(row.salary_min) : benchmark.min),
+    salary_max: typeof row.salary_max === 'number' ? row.salary_max : (row.salary_max ? Number(row.salary_max) : benchmark.max),
     job_type: row.job_type || 'Full-time',
-    category: row.category || 'Engineering',
-    tags: Array.isArray(row.tags) ? row.tags : [],
-    description: row.description || '',
-    requirements: row.requirements || undefined,
-    benefits: row.benefits || undefined,
-    apply_url: row.direct_apply_url || row.apply_url || undefined,
-    direct_apply_url: row.direct_apply_url || row.apply_url || undefined,
+    category: row.category || 'DEVELOPMENT',
+    tags: cleanTags,
+    description: sanitizeJobText(row.description),
+    requirements,
+    benefits,
+    responsibilities,
+    apply_url: cleanUrl,
+    direct_apply_url: cleanUrl,
+    has_direct_employer_url: isDirectEmployerUrl,
     is_featured: row.is_featured || row.is_verified_employer || false,
     is_verified_employer: row.is_verified_employer ?? true,
     status: row.status || 'active',
     created_at: row.created_at || new Date().toISOString(),
     posted_timestamp: row.posted_timestamp || undefined,
-    slug: buildSeoJobSlug(row),
+    slug: buildSeoJobSlug({ ...row, title, company }),
   };
 }
 
@@ -272,7 +521,6 @@ export function getBaseSalarySchema(job: RemoteJob): BaseSalarySchema {
   let min = job.salary_min;
   let max = job.salary_max;
 
-  // Extract from string if numeric values are not in DB
   if (!min && !max && text && !text.includes('COMPETITIVE')) {
     const kRegex = /(\d+(?:\.\d+)?)\s*K\b/gi;
     const kMatches: RegExpExecArray[] = [];
@@ -297,44 +545,10 @@ export function getBaseSalarySchema(job: RemoteJob): BaseSalarySchema {
     }
   }
 
-  // Provide realistic market benchmark for remote role if not specified
   if (!min && !max) {
-    const title = (job.title || '').toLowerCase();
-    const cat = (job.category || '').toLowerCase();
-    if (title.includes('devops') || title.includes('sre') || title.includes('cloud') || title.includes('security')) {
-      min = 110000;
-      max = 175000;
-    } else if (title.includes('engineer') || title.includes('developer') || title.includes('architect') || cat.includes('development') || cat.includes('engineering')) {
-      min = 95000;
-      max = 165000;
-    } else if (title.includes('product') || title.includes('program manager')) {
-      min = 100000;
-      max = 160000;
-    } else if (title.includes('data') || title.includes('ai') || title.includes('machine learning')) {
-      min = 105000;
-      max = 175000;
-    } else if (title.includes('design') || title.includes('ui') || title.includes('ux') || cat.includes('design')) {
-      min = 75000;
-      max = 135000;
-    } else if (title.includes('marketing') || title.includes('growth') || title.includes('seo') || cat.includes('marketing')) {
-      min = 65000;
-      max = 120000;
-    } else if (title.includes('sales') || title.includes('account executive') || cat.includes('sales')) {
-      min = 70000;
-      max = 130000;
-    } else if (title.includes('support') || title.includes('customer success') || cat.includes('support')) {
-      min = 45000;
-      max = 85000;
-    } else if (title.includes('writer') || title.includes('content') || cat.includes('writing')) {
-      min = 50000;
-      max = 95000;
-    } else if (title.includes('finance') || title.includes('accounting') || cat.includes('finance')) {
-      min = 70000;
-      max = 130000;
-    } else {
-      min = 60000;
-      max = 120000;
-    }
+    const benchmark = getEstimatedSalaryBenchmark(job.title, job.category);
+    min = benchmark.min;
+    max = benchmark.max;
   }
 
   const checkVal = max || min || 0;
@@ -363,4 +577,3 @@ export function getBaseSalarySchema(job: RemoteJob): BaseSalarySchema {
     value: valueObj,
   };
 }
-

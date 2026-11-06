@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
-import { supabase, slugify, buildSeoJobSlug } from '@/lib/supabase';
+import { supabase, buildSeoJobSlug, getShortJobHash, isAuthenticJobRow } from '@/lib/supabase';
+import { CAREER_GUIDES } from '@/lib/careerGuides';
 
-// Force dynamic ISR execution - regenerates every hour in background and serves instantly from Edge CDN
 export const revalidate = 3600;
 
 interface DynamicJobRecord {
@@ -22,7 +22,6 @@ interface DynamicJobRecord {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://remotejobshq.online';
 
-  // 1. Fetch 100% of live active jobs from Supabase using pagination (bypassing PostgREST 1000 row cap)
   const allJobs: DynamicJobRecord[] = [];
   const pageSize = 1000;
   let from = 0;
@@ -37,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .range(from, from + pageSize - 1);
 
       if (error || !data || data.length === 0) break;
-      allJobs.push(...data);
+      allJobs.push(...data.filter(isAuthenticJobRow));
       if (data.length < pageSize) break;
       from += pageSize;
     }
@@ -45,12 +44,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Dynamic sitemap job query error:', err);
   }
 
-  // 2. Compute latest database modification timestamp
-  const latestJobTimestamp = allJobs.length > 0 && (allJobs[0].updated_at || allJobs[0].created_at)
-    ? new Date(allJobs[0].updated_at || allJobs[0].created_at!)
-    : new Date();
+  const latestJobTimestamp =
+    allJobs.length > 0 && (allJobs[0].updated_at || allJobs[0].created_at)
+      ? new Date(allJobs[0].updated_at || allJobs[0].created_at!)
+      : new Date();
 
-  // 3. Dynamic Job Posting Routes (Rich High-Intent SEO Slugs for Google)
   const seenSlugs = new Set<string>();
   const jobRoutes: MetadataRoute.Sitemap = [];
 
@@ -77,13 +75,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
 
     if (!slug || slug === 'job' || slug === 'remote-job') {
-      slug = `job-${job.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)}`;
+      slug = `remote-role-${getShortJobHash(job.id)}`;
     }
 
-    // Disambiguate if exact duplicate slug occurs so all jobs have distinct sitemap URLs
+    // Disambiguate using clean deterministic hash (never exposing source prefix)
     if (seenSlugs.has(slug)) {
-      const cleanId = job.id.replace(/^jobicy_/, '').replace(/^himalayas_/, '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
-      slug = `${slug}-${cleanId}`;
+      slug = `${slug}-${getShortJobHash(job.id)}`;
     }
     seenSlugs.add(slug);
 
@@ -91,11 +88,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${baseUrl}/jobs/${slug}`,
       lastModified: date,
       changeFrequency: 'daily',
-      priority: 1.0,
+      priority: 0.9,
     });
   }
 
-  // 4. Dedicated Programmatic Category Hubs (Clean URLs)
   const categorySlugs = [
     'development',
     'design',
@@ -115,7 +111,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   }));
 
-  // 5. High-Demand Role & Skill Programmatic Landing Pages (Ultra SEO)
   const roleSlugs = [
     'software-engineer',
     'product-manager',
@@ -155,22 +150,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     'mobile-developer',
     'react',
     'python',
-    'javascript',
-    'typescript',
-    'nodejs',
-    'aws',
-    'flutter',
-    'solidity',
   ];
 
   const roleRoutes: MetadataRoute.Sitemap = roleSlugs.map((slug) => ({
     url: `${baseUrl}/role/${slug}`,
     lastModified: latestJobTimestamp,
     changeFrequency: 'daily' as const,
-    priority: 1.0,
+    priority: 0.9,
   }));
 
-  // 6. High-CTR Location Hub Programmatic Pages
   const locationSlugs = [
     'worldwide',
     'united-states',
@@ -189,20 +177,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${baseUrl}/location/${slug}`,
     lastModified: latestJobTimestamp,
     changeFrequency: 'daily' as const,
-    priority: 1.0,
+    priority: 0.9,
   }));
 
-  // 7. Crawlable Directory Pages for Complete Job Spidering (Only Canonical Root)
-  const directoryRoutes: MetadataRoute.Sitemap = [
+  const guideRoutes: MetadataRoute.Sitemap = [
     {
-      url: `${baseUrl}/all-jobs`,
-      lastModified: latestJobTimestamp,
-      changeFrequency: 'always' as const,
+      url: `${baseUrl}/guides`,
+      lastModified: new Date('2025-02-28'),
+      changeFrequency: 'weekly',
       priority: 1.0,
     },
+    ...CAREER_GUIDES.map((g) => ({
+      url: `${baseUrl}/guides/${g.slug}`,
+      lastModified: new Date(g.updatedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 1.0,
+    })),
   ];
 
-  // 8. Main Site Core Routes (100% Priority for all pages)
   const mainRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -211,31 +203,55 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/post-job`,
-      lastModified: new Date(),
+      url: `${baseUrl}/all-jobs`,
+      lastModified: latestJobTimestamp,
+      changeFrequency: 'always',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/salary-guide`,
+      lastModified: new Date('2025-02-28'),
       changeFrequency: 'weekly',
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date('2026-10-01'),
+      url: `${baseUrl}/about`,
+      lastModified: new Date('2025-02-28'),
       changeFrequency: 'monthly',
-      priority: 1.0,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date('2025-02-28'),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/post-job`,
+      lastModified: new Date('2025-02-28'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date('2025-02-28'),
+      changeFrequency: 'monthly',
+      priority: 0.7,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: new Date('2026-10-01'),
+      lastModified: new Date('2025-02-28'),
       changeFrequency: 'monthly',
-      priority: 1.0,
+      priority: 0.7,
     },
   ];
 
   return [
     ...mainRoutes,
+    ...guideRoutes,
     ...categoryRoutes,
     ...roleRoutes,
     ...locationRoutes,
-    ...directoryRoutes,
     ...jobRoutes,
   ];
 }
