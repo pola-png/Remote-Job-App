@@ -9,17 +9,20 @@ import {
   buildSeoJobSlug,
   getBaseSalarySchema,
   getShortJobHash,
+  isAuthenticJobRow,
 } from '@/lib/supabase';
 import {
   MapPin,
   Clock,
   Briefcase,
   ArrowLeft,
+  ArrowRight,
   ShieldCheck,
   CheckCircle2,
   BookOpen,
   DollarSign,
   Hash,
+  Sparkles,
 } from 'lucide-react';
 import DirectApplyBox from '@/app/components/DirectApplyBox';
 
@@ -116,6 +119,75 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
   }
 }
 
+async function getSimilarAndFallbackJobs(currentJob: RemoteJob, targetCount = 8): Promise<RemoteJob[]> {
+  try {
+    const results: RemoteJob[] = [];
+    const seenIds = new Set<string>([currentJob.id]);
+    const currentWords = currentJob.title
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 3);
+
+    // 1. Fetch active jobs in the same category
+    if (currentJob.category) {
+      const { data: categoryData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('status', 'active')
+        .eq('category', currentJob.category)
+        .neq('id', currentJob.id)
+        .order('posted_timestamp', { ascending: false, nullsFirst: false })
+        .limit(24);
+
+      if (categoryData && categoryData.length > 0) {
+        const validCategoryRows = categoryData.filter(isAuthenticJobRow);
+        // Sort by title/tag relevance to currentJob
+        validCategoryRows.sort((a, b) => {
+          const aTitle = String(a.title || '').toLowerCase();
+          const bTitle = String(b.title || '').toLowerCase();
+          const aScore = currentWords.reduce((acc, w) => acc + (aTitle.includes(w) ? 10 : 0), 0);
+          const bScore = currentWords.reduce((acc, w) => acc + (bTitle.includes(w) ? 10 : 0), 0);
+          return bScore - aScore;
+        });
+
+        for (const row of validCategoryRows) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            results.push(mapJobRow(row));
+          }
+          if (results.length >= targetCount) break;
+        }
+      }
+    }
+
+    // 2. Backfill with latest active remote jobs if fewer than targetCount found
+    if (results.length < targetCount) {
+      const { data: fallbackData } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('status', 'active')
+        .neq('id', currentJob.id)
+        .order('posted_timestamp', { ascending: false, nullsFirst: false })
+        .limit(20);
+
+      if (fallbackData && fallbackData.length > 0) {
+        for (const row of fallbackData) {
+          if (isAuthenticJobRow(row) && !seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            results.push(mapJobRow(row));
+          }
+          if (results.length >= targetCount) break;
+        }
+      }
+    }
+
+    return results;
+  } catch (err) {
+    console.error('Error fetching similar jobs:', err);
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const job = await getJobBySlug(params.slug);
   if (!job) {
@@ -167,6 +239,7 @@ export default async function JobDetailPage({ params }: Props) {
     return null;
   }
 
+  const similarJobs = await getSimilarAndFallbackJobs(job, 8);
   const targetSlug = buildSeoJobSlug(job);
   const canonicalUrl = `https://remotejobshq.online/jobs/${targetSlug}`;
   const categorySlug = (job.category || 'development').toLowerCase();
@@ -468,10 +541,69 @@ export default async function JobDetailPage({ params }: Props) {
             </div>
           )}
 
+          {/* Distributed Hiring & Evaluation Process Guide */}
+          <div style={{ marginTop: '2.5rem' }}>
+            <h2
+              style={{
+                fontSize: '1.35rem',
+                fontWeight: 700,
+                marginBottom: '1rem',
+                borderBottom: '1px solid var(--border-color)',
+                paddingBottom: '0.75rem',
+              }}
+            >
+              What to Expect in the Remote Hiring Process
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.7', marginBottom: '1rem' }}>
+              Distributed employers hiring for <strong>{job.title}</strong> positions typically evaluate candidates across four structured stages designed to measure both domain mastery and asynchronous collaboration:
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                gap: '0.9rem',
+              }}
+            >
+              {[
+                {
+                  step: 'Stage 1: Profile & Async Review',
+                  detail: `Screening of your relevant ${job.category?.toLowerCase() || 'domain'} accomplishments, portfolio links, and timezone alignment (${job.location}).`,
+                },
+                {
+                  step: 'Stage 2: Recruiter Alignment Call',
+                  detail: `A 25–30 minute video conversation covering role scope at ${job.company}, compensation expectations (${job.salary}), and remote work workflows.`,
+                },
+                {
+                  step: 'Stage 3: Practical Role Assessment',
+                  detail: 'A scoped work-sample walkthrough, technical pairing session, or case study mirroring real-world deliverables.',
+                },
+                {
+                  step: 'Stage 4: Team & Leadership Loop',
+                  detail: 'Final cross-functional discussions with peers and hiring leadership, followed by written offer and onboarding.',
+                },
+              ].map((st, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: 'rgba(13, 22, 39, 0.65)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '0.85rem',
+                    padding: '1.1rem',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: '#38BDF8', fontSize: '0.88rem', marginBottom: '0.35rem' }}>
+                    {st.step}
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.83rem', lineHeight: '1.55' }}>{st.detail}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Editorial Candidate Preparation Guidance */}
           <div
             style={{
-              marginTop: '2.5rem',
+              marginTop: '2rem',
               padding: '1.5rem',
               background: 'rgba(13, 22, 39, 0.75)',
               border: '1px solid var(--border-color)',
@@ -596,6 +728,122 @@ export default async function JobDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Similar & Recommended Remote Jobs Section (Always Populated for Deep Engagement & SEO) */}
+      {similarJobs.length > 0 && (
+        <section style={{ marginTop: '4rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              marginBottom: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  color: '#38BDF8',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  marginBottom: '0.35rem',
+                }}
+              >
+                <Sparkles size={15} /> RELATED REMOTE OPPORTUNITIES
+              </div>
+              <h2 style={{ fontSize: '1.65rem', fontWeight: 800 }}>
+                Similar & Recommended Remote Positions
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginTop: '0.25rem' }}>
+                Explore more verified remote roles matching <strong>{job.category}</strong> and distributed career tracks.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <Link href={`/category/${categorySlug}`} className="btn-secondary" style={{ fontSize: '0.88rem' }}>
+                More {job.category} Jobs <ArrowRight size={14} />
+              </Link>
+              <Link href="/all-jobs" className="btn-primary" style={{ fontSize: '0.88rem' }}>
+                See All Remote Jobs <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+
+          <div className="jobs-grid" style={{ marginBottom: '2rem' }}>
+            {similarJobs.map((simJob) => (
+              <Link
+                key={simJob.id}
+                href={`/jobs/${simJob.slug || encodeURIComponent(simJob.id)}`}
+                className="job-card"
+              >
+                <div className="job-info-left">
+                  <div className="company-logo">
+                    {simJob.company_logo ? (
+                      <img
+                        src={simJob.company_logo}
+                        alt={simJob.company}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      simJob.company.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
+                        {simJob.company}
+                      </span>
+                      <span
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.14)',
+                          color: '#34D399',
+                          fontSize: '0.68rem',
+                          padding: '0.1rem 0.45rem',
+                          borderRadius: '4px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        VERIFIED
+                      </span>
+                    </div>
+                    <div className="job-title">{simJob.title}</div>
+                    <div className="job-meta">
+                      <span className="job-meta-item">
+                        <MapPin size={14} color="#38BDF8" /> {simJob.location || '100% Remote / Worldwide'}
+                      </span>
+                      {simJob.job_type && (
+                        <span className="job-meta-item">
+                          <Briefcase size={14} /> {simJob.job_type}
+                        </span>
+                      )}
+                      {simJob.salary && <span className="tag salary-tag">💰 {simJob.salary}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+                  <div className="tags-row">
+                    {simJob.tags &&
+                      simJob.tags.slice(0, 2).map((tag, idx) => (
+                        <span key={idx} className="tag">
+                          {tag}
+                        </span>
+                      ))}
+                  </div>
+                  <span className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                    View Role <ArrowRight size={14} />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
