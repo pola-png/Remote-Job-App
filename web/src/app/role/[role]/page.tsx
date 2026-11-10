@@ -7,6 +7,7 @@ interface Props {
   params: { role: string };
 }
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const ROLE_SYNONYMS: Record<string, { terms: string[]; defaultCategory?: string }> = {
@@ -107,7 +108,7 @@ export default async function RolePage({ params }: Props) {
       const orFilter = synonymConfig.terms.map((t) => `title.ilike.%${t}%`).join(',');
       const { data, count } = await supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('status', 'active')
         .or(orFilter)
         .order('posted_timestamp', { ascending: false, nullsFirst: false })
@@ -122,7 +123,7 @@ export default async function RolePage({ params }: Props) {
       const pattern = words.length > 0 ? '%' + words.join('%') + '%' : `%${rawRole}%`;
       const { data, count } = await supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('status', 'active')
         .ilike('title', pattern)
         .order('posted_timestamp', { ascending: false, nullsFirst: false })
@@ -138,7 +139,7 @@ export default async function RolePage({ params }: Props) {
       const existingIds = new Set(jobs.map((j) => j.id));
       let fallbackQuery = supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS, { count: 'exact' })
+        .select('*', { count: 'exact' })
         .eq('status', 'active')
         .order('posted_timestamp', { ascending: false, nullsFirst: false })
         .limit(20);

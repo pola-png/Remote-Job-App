@@ -7,6 +7,7 @@ interface Props {
   params: { category: string };
 }
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const CATEGORY_MAP: Record<
@@ -153,7 +154,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const { data: rawJobs, count } = await supabase
     .from('job_postings')
-    .select(JOB_LIST_COLUMNS, { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('status', 'active')
     .eq('category', cat.name)
     .order('posted_timestamp', { ascending: false, nullsFirst: false })

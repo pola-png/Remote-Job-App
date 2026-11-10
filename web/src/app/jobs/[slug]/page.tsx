@@ -32,7 +32,7 @@ interface Props {
   params: { slug: string };
 }
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
 function extractCoreSlug(rawSlug: string): string {
@@ -55,7 +55,7 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
     // 1. Direct match by exact ID if someone visits legacy link
     const { data: directData } = await supabase
       .from('job_postings')
-      .select(JOB_DETAIL_COLUMNS)
+      .select('*')
       .eq('id', slug)
       .maybeSingle();
 
@@ -68,22 +68,22 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
       const firstWord = words[0];
       const lastWord = words[words.length - 1];
 
-      let query = supabase.from('job_postings').select(JOB_DETAIL_COLUMNS);
+      let query = supabase.from('job_postings').select('*');
       if (words.length >= 3) {
         query = query.ilike('title', `%${words[0]}%${words[1]}%`);
       } else {
         query = query.or(`title.ilike.%${firstWord}%,company.ilike.%${lastWord}%`);
       }
 
-      const { data: candidates } = await query.order('created_at', { ascending: false }).limit(25);
+      const { data: candidates } = await query.order('created_at', { ascending: false }).limit(50);
 
       let candidateList = candidates && candidates.length > 0 ? candidates : [];
       if (candidateList.length === 0) {
         const { data: fallbackList } = await supabase
           .from('job_postings')
-          .select(JOB_DETAIL_COLUMNS)
+          .select('*')
           .ilike('title', `%${firstWord}%`)
-          .limit(25);
+          .limit(50);
         if (fallbackList) candidateList = fallbackList;
       }
 
@@ -130,16 +130,16 @@ async function getSimilarAndFallbackJobs(currentJob: RemoteJob, targetCount = 8)
       .split(/[^a-z0-9]+/)
       .filter((w) => w.length >= 3);
 
-    // 1. Fetch active jobs in the same category (lightweight columns only)
+    // 1. Fetch active jobs in the same category
     if (currentJob.category) {
       const { data: categoryData } = await supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS)
+        .select('*')
         .eq('status', 'active')
         .eq('category', currentJob.category)
         .neq('id', currentJob.id)
         .order('posted_timestamp', { ascending: false, nullsFirst: false })
-        .limit(16);
+        .limit(24);
 
       if (categoryData && categoryData.length > 0) {
         const validCategoryRows = categoryData.filter(isAuthenticJobRow);
@@ -166,11 +166,11 @@ async function getSimilarAndFallbackJobs(currentJob: RemoteJob, targetCount = 8)
     if (results.length < targetCount) {
       const { data: fallbackData } = await supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS)
+        .select('*')
         .eq('status', 'active')
         .neq('id', currentJob.id)
         .order('posted_timestamp', { ascending: false, nullsFirst: false })
-        .limit(14);
+        .limit(20);
 
       if (fallbackData && fallbackData.length > 0) {
         for (const row of fallbackData) {

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import AdSenseSlot from '@/app/components/AdSenseSlot';
 
-export const revalidate = 1800;
+export const dynamic = 'force-dynamic';
 
 const HOMEPAGE_JOBS_LIMIT = 15;
 
@@ -29,10 +29,10 @@ async function getHomepageJobsAndCount(
   try {
     let query = supabase
       .from('job_postings')
-      .select(JOB_LIST_COLUMNS, { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('status', 'active')
       .order('posted_timestamp', { ascending: false, nullsFirst: false })
-      .range(0, 20);
+      .range(0, 24);
 
     if (category && category !== 'ALL') {
       query = query.eq('category', category);
@@ -48,8 +48,8 @@ async function getHomepageJobsAndCount(
       console.error('Error fetching homepage jobs:', error);
       const { data: fallbackData, count: fallbackCount } = await supabase
         .from('job_postings')
-        .select(JOB_LIST_COLUMNS, { count: 'exact' })
-        .range(0, 20);
+        .select('*', { count: 'exact' })
+        .range(0, 24);
       const valid = (fallbackData || []).filter(isAuthenticJobRow).slice(0, HOMEPAGE_JOBS_LIMIT).map(mapJobRow);
       return { jobs: valid, totalCount: fallbackCount || valid.length };
     }

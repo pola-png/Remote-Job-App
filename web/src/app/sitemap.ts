@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { supabase, buildSeoJobSlug, getShortJobHash, isAuthenticJobRow } from '@/lib/supabase';
 import { CAREER_GUIDES } from '@/lib/careerGuides';
 
-export const revalidate = 21600;
+export const revalidate = 3600;
 
 interface DynamicJobRecord {
   id: string;
@@ -23,17 +23,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://remotejobshq.online';
 
   const allJobs: DynamicJobRecord[] = [];
+  const pageSize = 1000;
+  let from = 0;
 
   try {
-    const { data } = await supabase
-      .from('job_postings')
-      .select('id, title, company, location, job_type, salary_range, salary_min, salary_max, category, updated_at, created_at, posted_timestamp')
-      .eq('status', 'active')
-      .order('posted_timestamp', { ascending: false, nullsFirst: false })
-      .range(0, 999);
+    while (true) {
+      const { data, error } = await supabase
+        .from('job_postings')
+        .select('id, title, company, location, job_type, salary_range, salary_min, salary_max, category, updated_at, created_at, posted_timestamp')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
 
-    if (data && data.length > 0) {
+      if (error || !data || data.length === 0) break;
       allJobs.push(...data.filter(isAuthenticJobRow));
+      if (data.length < pageSize) break;
+      from += pageSize;
     }
   } catch (err) {
     console.error('Dynamic sitemap job query error:', err);

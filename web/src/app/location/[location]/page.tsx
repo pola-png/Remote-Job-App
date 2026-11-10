@@ -7,6 +7,7 @@ interface Props {
   params: { location: string };
 }
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -41,7 +42,7 @@ export default async function LocationPage({ params }: Props) {
 
   let query = supabase
     .from('job_postings')
-    .select(JOB_LIST_COLUMNS, { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('status', 'active');
 
   if (
