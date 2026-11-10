@@ -1,13 +1,12 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow, JOB_LIST_COLUMNS } from '@/lib/supabase';
 import { Briefcase, MapPin, ArrowRight, ArrowLeft, ShieldCheck, BookOpen } from 'lucide-react';
 
 interface Props {
   params: { category: string };
 }
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const CATEGORY_MAP: Record<
@@ -154,7 +153,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const { data: rawJobs, count } = await supabase
     .from('job_postings')
-    .select('*', { count: 'exact' })
+    .select(JOB_LIST_COLUMNS, { count: 'exact' })
     .eq('status', 'active')
     .eq('category', cat.name)
     .order('posted_timestamp', { ascending: false, nullsFirst: false })

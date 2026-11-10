@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Send, ExternalLink, ShieldCheck, FileText, UserCheck } from 'lucide-react';
+import { CheckCircle2, Send, ShieldCheck, FileText, UserCheck } from 'lucide-react';
 
 interface DirectApplyBoxProps {
   jobTitle: string;
@@ -16,7 +16,6 @@ export default function DirectApplyBox({
   companyName,
   publicRef,
   location,
-  directEmployerUrl,
 }: DirectApplyBoxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -54,26 +53,13 @@ export default function DirectApplyBox({
       >
         <CheckCircle2 size={48} color="#34D399" style={{ margin: '0 auto 1rem auto' }} />
         <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.5rem', color: '#F8FAFC' }}>
-          Application Profile Recorded ({publicRef})
+          Candidate Application Submitted ({publicRef})
         </h3>
-        <p style={{ color: 'var(--text-muted)', maxWidth: '580px', margin: '0 auto 1.25rem auto', fontSize: '0.95rem', lineHeight: '1.6' }}>
-          Thank you, <strong style={{ color: '#F8FAFC' }}>{form.fullName}</strong>. Your candidate profile for{' '}
+        <p style={{ color: 'var(--text-muted)', maxWidth: '580px', margin: '0 auto', fontSize: '0.95rem', lineHeight: '1.6' }}>
+          Thank you, <strong style={{ color: '#F8FAFC' }}>{form.fullName}</strong>. Your application dossier for{' '}
           <strong style={{ color: '#38BDF8' }}>{jobTitle}</strong> at <strong style={{ color: '#F8FAFC' }}>{companyName}</strong> has been
-          prepared and logged under reference <code>{publicRef}</code>.
+          recorded under reference <code>{publicRef}</code>. Keep an eye on <strong>{form.email}</strong> for next steps.
         </p>
-        {directEmployerUrl && (
-          <div style={{ marginTop: '1.25rem' }}>
-            <a
-              href={directEmployerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary"
-              style={{ padding: '0.85rem 2rem', fontSize: '1rem' }}
-            >
-              Complete Final Step on {companyName} Career Portal <ExternalLink size={16} />
-            </a>
-          </div>
-        )}
       </div>
     );
   }
@@ -126,19 +112,8 @@ export default function DirectApplyBox({
               className="btn-primary"
               style={{ fontSize: '1.05rem', padding: '0.9rem 2.25rem' }}
             >
-              <FileText size={18} /> Start Direct Application
+              <FileText size={18} /> Apply Now on Remote Jobs HQ
             </button>
-            {directEmployerUrl && (
-              <a
-                href={directEmployerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary"
-                style={{ fontSize: '1rem', padding: '0.9rem 1.75rem' }}
-              >
-                Employer Career Portal <ExternalLink size={16} />
-              </a>
-            )}
           </div>
         </div>
       ) : (
@@ -214,12 +189,12 @@ export default function DirectApplyBox({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#E2E8F0' }}>
-                 LinkedIn, GitHub, or Portfolio URL *
+                Resume / Portfolio Summary *
               </label>
               <input
                 required
-                type="url"
-                placeholder="https://linkedin.com/in/yourprofile"
+                type="text"
+                placeholder="e.g. 5+ yrs Full-Stack React/Node, B.S. CS"
                 value={form.portfolioUrl}
                 onChange={(e) => setForm({ ...form, portfolioUrl: e.target.value })}
                 style={{
@@ -259,7 +234,7 @@ export default function DirectApplyBox({
 
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: '#E2E8F0' }}>
-              Relevant Experience & Pitch for {companyName} *
+              Relevant Experience & Cover Note for {companyName} *
             </label>
             <textarea
               required

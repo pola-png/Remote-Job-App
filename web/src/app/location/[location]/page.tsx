@@ -1,13 +1,12 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow, JOB_LIST_COLUMNS } from '@/lib/supabase';
 import { Briefcase, MapPin, ArrowRight, ArrowLeft, Globe } from 'lucide-react';
 
 interface Props {
   params: { location: string };
 }
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -42,7 +41,7 @@ export default async function LocationPage({ params }: Props) {
 
   let query = supabase
     .from('job_postings')
-    .select('*', { count: 'exact' })
+    .select(JOB_LIST_COLUMNS, { count: 'exact' })
     .eq('status', 'active');
 
   if (

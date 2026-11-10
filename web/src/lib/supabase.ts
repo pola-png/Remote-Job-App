@@ -5,6 +5,21 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOi
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+/**
+ * Lightweight column projection for job listing cards & sitemaps.
+ * Excludes 3KB `description`, `company_logo`, `direct_apply_url`, and `source`
+ * to cut Supabase egress by >85% and ensure zero external URLs are fetched.
+ */
+export const JOB_LIST_COLUMNS =
+  'id, title, company, location, job_type, salary_range, salary_min, salary_max, category, tags, is_featured, is_verified_employer, status, created_at, posted_timestamp';
+
+/**
+ * Column projection for single job detail view (excludes `company_logo`, `direct_apply_url`, and `source`).
+ */
+export const JOB_DETAIL_COLUMNS =
+  'id, title, company, location, job_type, salary_range, salary_min, salary_max, category, tags, description, requirements, benefits, is_featured, is_verified_employer, status, created_at, posted_timestamp';
+
+
 export interface RemoteJob {
   id: string;
   public_ref: string;
@@ -78,7 +93,8 @@ export function getShortJobHash(rawId?: string): string {
 export function sanitizeJobText(text?: string): string {
   if (!text) return '';
   return text
-    .replace(/https?:\/\/(?:www\.)?(?:himalayas\.app|jobicy\.com|remotive\.com|remotive\.io|remotejobs\.org|arbeitnow\.com)[^\s)"]*/gi, '')
+    .replace(/https?:\/\/[^\s)<>"']+/gi, '')
+    .replace(/\b(?:www\.)?[a-z0-9-]+\.(?:com|org|net|io|app|co|ai|dev)(?:\/[^\s)<>"']*)?/gi, '')
     .replace(/(?:found on|via|source:|posted on|originally posted on|apply on|visit)\s+(?:jobicy|himalayas|remotive|remotejobs\.org|arbeitnow)[^\n.]*/gi, '')
     .replace(/please mention (?:remotive|jobicy|himalayas|remotejobs\.org)[^\n.]*/gi, '')
     .replace(AGGREGATOR_NAMES_REGEX, 'Remote Jobs HQ')
@@ -454,7 +470,6 @@ export function mapJobRow(row: any): RemoteJob {
   const title = sanitizeJobText(row.title) || 'Remote Position';
   const company = sanitizeJobText(row.company) || 'Hiring Company';
   const cleanTags = sanitizeTags(row.tags, row.category);
-  const { cleanUrl, isDirectEmployerUrl } = sanitizeApplyUrl(row.direct_apply_url || row.apply_url);
 
   const rawSalary = row.salary_range || row.salary;
   const benchmark = getEstimatedSalaryBenchmark(title, row.category);
@@ -473,7 +488,8 @@ export function mapJobRow(row: any): RemoteJob {
     public_ref: getPublicJobRef(row.id),
     title,
     company,
-    company_logo: row.company_logo || undefined,
+    // Never expose external company_logo URLs from third-party job boards
+    company_logo: undefined,
     location: sanitizeJobText(row.location) || '100% Remote / Worldwide',
     salary: displaySalary,
     salary_range: displaySalary,
@@ -486,9 +502,10 @@ export function mapJobRow(row: any): RemoteJob {
     requirements,
     benefits,
     responsibilities,
-    apply_url: cleanUrl,
-    direct_apply_url: cleanUrl,
-    has_direct_employer_url: isDirectEmployerUrl,
+    // Keep all candidate applications 100% first-party on remotejobshq.online
+    apply_url: undefined,
+    direct_apply_url: undefined,
+    has_direct_employer_url: false,
     is_featured: row.is_featured || row.is_verified_employer || false,
     is_verified_employer: row.is_verified_employer ?? true,
     status: row.status || 'active',

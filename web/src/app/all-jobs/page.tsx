@@ -1,9 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow, JOB_LIST_COLUMNS } from '@/lib/supabase';
 import { Briefcase, MapPin, ArrowRight, ArrowLeft, Search, ShieldCheck } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 export async function generateMetadata({
@@ -37,7 +36,7 @@ export default async function AllJobsDirectoryPage({
 
   let query = supabase
     .from('job_postings')
-    .select('*', { count: 'exact' })
+    .select(JOB_LIST_COLUMNS, { count: 'exact' })
     .eq('status', 'active')
     .order('posted_timestamp', { ascending: false, nullsFirst: false });
 

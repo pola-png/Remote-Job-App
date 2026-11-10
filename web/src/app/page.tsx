@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow } from '@/lib/supabase';
+import { supabase, RemoteJob, mapJobRow, isAuthenticJobRow, JOB_LIST_COLUMNS } from '@/lib/supabase';
 import { CAREER_GUIDES } from '@/lib/careerGuides';
 import {
   Briefcase,
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import AdSenseSlot from '@/app/components/AdSenseSlot';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 1800;
 
 const HOMEPAGE_JOBS_LIMIT = 15;
 
@@ -29,10 +29,10 @@ async function getHomepageJobsAndCount(
   try {
     let query = supabase
       .from('job_postings')
-      .select('*', { count: 'exact' })
+      .select(JOB_LIST_COLUMNS, { count: 'exact' })
       .eq('status', 'active')
       .order('posted_timestamp', { ascending: false, nullsFirst: false })
-      .range(0, 24);
+      .range(0, 20);
 
     if (category && category !== 'ALL') {
       query = query.eq('category', category);
@@ -48,8 +48,8 @@ async function getHomepageJobsAndCount(
       console.error('Error fetching homepage jobs:', error);
       const { data: fallbackData, count: fallbackCount } = await supabase
         .from('job_postings')
-        .select('*', { count: 'exact' })
-        .range(0, 24);
+        .select(JOB_LIST_COLUMNS, { count: 'exact' })
+        .range(0, 20);
       const valid = (fallbackData || []).filter(isAuthenticJobRow).slice(0, HOMEPAGE_JOBS_LIMIT).map(mapJobRow);
       return { jobs: valid, totalCount: fallbackCount || valid.length };
     }
@@ -638,25 +638,32 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Mobile App Banner */}
+      {/* Employer & Candidate CTA Banner (100% Internal Links) */}
       <section className="app-banner">
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Get Real-Time Instant Job Alerts on Mobile
+            Hiring for a Distributed Team or Looking for Your Next Role?
           </h2>
           <p style={{ color: 'var(--text-muted)', maxWidth: '580px' }}>
-            Download the official Remote Jobs HQ Android App to receive instant push notifications when new roles matching your specialty are published.
+            Browse our complete verified index of {formattedTotal} remote positions or publish your company&apos;s open role directly to our global talent community.
           </p>
         </div>
-        <a
-          href="https://play.google.com/store/apps/details?id=com.xapzap.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary"
-          style={{ whiteSpace: 'nowrap', padding: '0.9rem 1.8rem' }}
-        >
-          📱 Download Android App
-        </a>
+        <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+          <Link
+            href="/all-jobs"
+            className="btn-primary"
+            style={{ whiteSpace: 'nowrap', padding: '0.9rem 1.8rem' }}
+          >
+            Browse All {formattedTotal} Jobs
+          </Link>
+          <Link
+            href="/post-job"
+            className="btn-secondary"
+            style={{ whiteSpace: 'nowrap', padding: '0.9rem 1.6rem' }}
+          >
+            Post a Remote Job
+          </Link>
+        </div>
       </section>
     </div>
   );
