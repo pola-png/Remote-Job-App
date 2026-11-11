@@ -38,6 +38,12 @@ import { AdTierService } from '../services/adTierService';
 import { WatchAdsService, WatchAdsStats } from '../services/watchAdsService';
 import { InAppReviewService } from '../services/inAppReview';
 import { WatchAdsScreen } from './WatchAdsScreen';
+import { YouTubeSubscribeTaskScreen } from './YouTubeSubscribeTaskScreen';
+import {
+  YouTubeTaskService,
+  YOUTUBE_TASK_CONFIG,
+  YouTubeTaskStatusInfo,
+} from '../services/youtubeTask';
 
 interface Props {
   userId: string;
@@ -74,12 +80,24 @@ export const JobsScreen: React.FC<Props> = ({
   const [userIsAdmin, setUserIsAdmin] = useState<boolean>(Boolean(initialIsAdmin));
   const [showWatchAdsView, setShowWatchAdsView] = useState<boolean>(false);
   const [reviewClaimed, setReviewClaimed] = useState<boolean>(false);
+  const [youtubeStatus, setYoutubeStatus] = useState<YouTubeTaskStatusInfo>({
+    status: 'not_submitted',
+    rewardUsd: YOUTUBE_TASK_CONFIG.REWARD_USD,
+    rewardCredited: false,
+  });
+  const [showYouTubeTaskScreen, setShowYouTubeTaskScreen] = useState<boolean>(false);
+  const [openYouTubeInAdminMode, setOpenYouTubeInAdminMode] = useState<boolean>(false);
 
   const isAdMobEligible = userIsAdmin || AdTierService.isAdMobAllowedSync();
 
   // Fast-path: Load cached tasks immediately on mount (0ms) so user never sees empty screen
   useEffect(() => {
     let isMounted = true;
+    YouTubeTaskService.getStatus(userId, false).then((yt) => {
+      if (isMounted && yt) {
+        setYoutubeStatus(yt);
+      }
+    });
     JobsService.isReviewClaimed(userId).then((claimed) => {
       if (isMounted && claimed) {
         setReviewClaimed(true);
@@ -114,11 +132,15 @@ export const JobsScreen: React.FC<Props> = ({
     const canSeeWatchAds = adm || AdTierService.isAdMobAllowedSync();
 
     try {
-      const [userBal, userJobs, stats] = await Promise.all([
+      const [userBal, userJobs, stats, ytStatus] = await Promise.all([
         JobsService.getBalance(userId, forceRefresh),
         JobsService.getJobs(userId, forceRefresh),
         canSeeWatchAds ? WatchAdsService.getStats() : Promise.resolve(null),
+        YouTubeTaskService.getStatus(userId, forceRefresh),
       ]);
+      if (ytStatus) {
+        setYoutubeStatus(ytStatus);
+      }
       setBalance((prev) => (typeof userBal === 'number' && !isNaN(userBal) ? Math.max(prev, userBal) : prev));
       if (userJobs && userJobs.length > 0) {
         setJobs(userJobs);
@@ -163,6 +185,10 @@ export const JobsScreen: React.FC<Props> = ({
 
   useEffect(() => {
     const handleHardwareBack = () => {
+      if (showYouTubeTaskScreen) {
+        setShowYouTubeTaskScreen(false);
+        return true;
+      }
       if (activeTaskView) {
         setActiveTaskView(null);
         return true;
@@ -171,7 +197,7 @@ export const JobsScreen: React.FC<Props> = ({
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
     return () => sub.remove();
-  }, [activeTaskView]);
+  }, [activeTaskView, showYouTubeTaskScreen]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -179,7 +205,39 @@ export const JobsScreen: React.FC<Props> = ({
     setRefreshing(false);
   };
 
+  const promptMandatoryYouTubeGate = () => {
+    Alert.alert(
+      '🔴 Mandatory Task Required (+$2.00 Bonus)',
+      youtubeStatus.status === 'rejected'
+        ? 'Your previous YouTube subscription screenshot was rejected by Admin. Please upload a valid screenshot showing you are Subscribed to unlock tasks and claim your $2.00 bonus.'
+        : 'All members must subscribe to our official YouTube channel and submit a screenshot proof to unlock daily micro-tasks and payouts. You will also earn a +$2.00 cash bonus once approved by Admin!',
+      [
+        { text: 'Later', style: 'cancel' },
+        {
+          text: 'Complete YouTube Task ($2.00)',
+          onPress: () => {
+            setOpenYouTubeInAdminMode(false);
+            setShowYouTubeTaskScreen(true);
+          },
+        },
+      ]
+    );
+  };
+
   const handleStartTask = async (task: MicroJobItem) => {
+    // 0. Mandatory YouTube Channel Subscribe Task ($2.00 Cash Reward + Admin Approval)
+    if (task.id === YOUTUBE_TASK_CONFIG.TASK_ID) {
+      setOpenYouTubeInAdminMode(false);
+      setShowYouTubeTaskScreen(true);
+      return;
+    }
+
+    // Enforce Mandatory YouTube Subscription Gate for all non-admin users before unlocking other tasks
+    if (!userIsAdmin && !YouTubeTaskService.isMandatoryTaskGateSatisfied(youtubeStatus)) {
+      promptMandatoryYouTubeGate();
+      return;
+    }
+
     // 1. Google Play In-App Review Task ($1.00 Reward)
     // Verification flow: Do not reward if user simply closes without submitting
     if (task.id === 'playstore_inapp_review_v1') {
@@ -289,6 +347,10 @@ export const JobsScreen: React.FC<Props> = ({
   };
 
   const handleOpenWatchAds = () => {
+    if (!userIsAdmin && !YouTubeTaskService.isMandatoryTaskGateSatisfied(youtubeStatus)) {
+      promptMandatoryYouTubeGate();
+      return;
+    }
     if (onNavigateToWatchAds) {
       onNavigateToWatchAds();
     } else {
@@ -302,6 +364,26 @@ export const JobsScreen: React.FC<Props> = ({
       setActiveTaskView(selectedTaskForAd);
     }
   };
+
+  if (showYouTubeTaskScreen) {
+    return (
+      <YouTubeSubscribeTaskScreen
+        userId={userId}
+        userEmail={userEmail}
+        isAdmin={userIsAdmin}
+        initialAdminMode={openYouTubeInAdminMode}
+        onBack={() => {
+          setShowYouTubeTaskScreen(false);
+          setOpenYouTubeInAdminMode(false);
+          loadData(true);
+        }}
+        onStatusUpdated={(newStatus) => {
+          setYoutubeStatus(newStatus);
+          loadData(true);
+        }}
+      />
+    );
+  }
 
   if (showWatchAdsView) {
     return (
@@ -354,6 +436,8 @@ export const JobsScreen: React.FC<Props> = ({
   };
 
   const filteredJobs = jobs.filter((j) => {
+    // Always keep Mandatory YouTube Subscribe Task pinned at the top unless already approved & filtering
+    if (j.id === YOUTUBE_TASK_CONFIG.TASK_ID && activeCategory === 'ALL') return true;
     // Completely remove claimed review task from list permanently once claimed
     if (j.id === 'playstore_inapp_review_v1' && (j.isCompleted || reviewClaimed)) return false;
     if (highlightTaskId && j.id === highlightTaskId) return true;
@@ -426,10 +510,21 @@ export const JobsScreen: React.FC<Props> = ({
             {/* Admin Override Badge (if admin user) */}
             {userIsAdmin && (
               <View style={styles.adminBanner}>
-                <Award color="#FBBF24" size={15} />
-                <Text style={styles.adminBannerText}>
-                  ADMIN MODE ACTIVE • Watch Ads Unlocked Regardless of Tier
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Award color="#FBBF24" size={15} />
+                  <Text style={styles.adminBannerText}>
+                    ADMIN MODE ACTIVE • Watch Ads & Approvals Ready
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.adminReviewBtn}
+                  onPress={() => {
+                    setOpenYouTubeInAdminMode(true);
+                    setShowYouTubeTaskScreen(true);
+                  }}
+                >
+                  <Text style={styles.adminReviewBtnText}>Review YouTube ($2)</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -490,9 +585,103 @@ export const JobsScreen: React.FC<Props> = ({
           ) : null
         }
         renderItem={({ item, index }: { item: MicroJobItem; index: number }) => {
+          const isYouTubeTask = item.id === YOUTUBE_TASK_CONFIG.TASK_ID;
           const isReviewTask = item.id === 'playstore_inapp_review_v1';
           const isWatchAd = item.id.startsWith('watch_ad_');
           const isLocker = item.id.startsWith('cpalead_locker_');
+
+          // 0. Mandatory #1 Task: YouTube Channel Subscribe ($2.00 Cash + Screenshot Proof + Admin Approval)
+          if (isYouTubeTask) {
+            const ytState = youtubeStatus.status || item.youtubeProofStatus || 'not_submitted';
+            return (
+              <View>
+                <TouchableOpacity
+                  style={[
+                    styles.taskCard,
+                    styles.taskCardYouTube,
+                    ytState === 'approved' && styles.taskCardCompleted,
+                  ]}
+                  onPress={() => handleStartTask(item)}
+                  activeOpacity={0.78}
+                >
+                  <View style={styles.youtubeIconContainer}>
+                    <Play color="#EF4444" size={24} />
+                  </View>
+
+                  <View style={styles.taskDetails}>
+                    <View style={styles.youtubeMandatoryBadge}>
+                      <Sparkles color="#FEE2E2" size={11} style={{ marginRight: 3 }} />
+                      <Text style={styles.youtubeMandatoryBadgeText} numberOfLines={1}>
+                        MANDATORY FOR ALL USERS • +$2.00
+                      </Text>
+                    </View>
+                    <Text style={styles.taskTitleYouTube} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.taskDesc} numberOfLines={2}>
+                      {ytState === 'pending'
+                        ? '⏳ Screenshot submitted! Waiting for Admin approval to credit +$2.00 to your balance.'
+                        : ytState === 'rejected'
+                        ? '⚠️ Screenshot rejected by Admin. Tap here to upload a clear "Subscribed" screenshot.'
+                        : ytState === 'approved'
+                        ? '✅ Verified by Admin! Your +$2.00 YouTube subscription reward has been credited.'
+                        : item.description}
+                    </Text>
+
+                    <View style={styles.taskMeta}>
+                      <View style={styles.rewardTagYouTube}>
+                        <Text style={styles.rewardTextYouTube} numberOfLines={1}>
+                          +$2.00 CASH
+                        </Text>
+                      </View>
+
+                      <View style={styles.networkBadgeYouTube}>
+                        <Text style={styles.networkBadgeTextYouTube} numberOfLines={1}>
+                          YouTube Proof
+                        </Text>
+                      </View>
+
+                      <View style={styles.timeTag}>
+                        <Clock color="#94A3B8" size={11} />
+                        <Text style={styles.timeText}>
+                          {ytState === 'pending' ? 'Pending Admin' : 'Admin Verified'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.taskAction}>
+                    {ytState === 'approved' ? (
+                      <View style={styles.completedBadge}>
+                        <CheckCircle2 color="#34D399" size={20} />
+                        <Text style={styles.completedBadgeText}>Approved</Text>
+                      </View>
+                    ) : ytState === 'pending' ? (
+                      <View style={styles.youtubePendingPill}>
+                        <Clock color="#FDE68A" size={11} style={{ marginRight: 3 }} />
+                        <Text style={styles.youtubePendingPillText} numberOfLines={1}>
+                          Pending
+                        </Text>
+                      </View>
+                    ) : ytState === 'rejected' ? (
+                      <View style={styles.youtubePill}>
+                        <Text style={styles.youtubePillText} numberOfLines={1}>
+                          Resubmit
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.youtubePill}>
+                        <Play color="#FFFFFF" size={11} style={{ marginRight: 3 }} />
+                        <Text style={styles.youtubePillText} numberOfLines={1}>
+                          Earn $2
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
+            );
+          }
 
           // 1. Google Play In-App Review Task Item (Omit completely if claimed)
           if (isReviewTask) {
@@ -1455,6 +1644,122 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginLeft: 6,
     letterSpacing: 0.3,
+    flexShrink: 1,
+  },
+  adminReviewBtn: {
+    backgroundColor: '#FBBF24',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  adminReviewBtnText: {
+    color: '#0F172A',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  /* Mandatory YouTube Subscribe Task Card */
+  taskCardYouTube: {
+    borderColor: '#EF4444',
+    borderWidth: 1.8,
+    backgroundColor: '#23121B',
+  },
+  youtubeIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  youtubeMandatoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#991B1B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    marginBottom: 4,
+    borderWidth: 0.5,
+    borderColor: '#F87171',
+  },
+  youtubeMandatoryBadgeText: {
+    color: '#FEE2E2',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    flexShrink: 1,
+  },
+  taskTitleYouTube: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFF1F2',
+    marginBottom: 4,
+  },
+  rewardTagYouTube: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#065F46',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0.5,
+    borderColor: '#34D399',
+  },
+  rewardTextYouTube: {
+    color: '#A7F3D0',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  networkBadgeYouTube: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+  },
+  networkBadgeTextYouTube: {
+    color: '#FCA5A5',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  youtubePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F87171',
+  },
+  youtubePillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  youtubePendingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#78350F',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  youtubePendingPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FDE68A',
   },
   taskCardHighlighted: {
     borderColor: '#38BDF8',

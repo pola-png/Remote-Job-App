@@ -7,6 +7,7 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
+  Platform,
 } from 'react-native';
 import {
   Briefcase,
@@ -119,6 +120,13 @@ export const LandingScreen: React.FC<Props> = ({
           </Text>
 
           <View style={styles.tagsRow}>
+            {Platform.OS !== 'web' && (
+              <View style={[styles.tagPill, { borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.14)' }]}>
+                <Text style={[styles.tagPillText, { color: '#FCA5A5', fontWeight: '800' }]}>
+                  🔴 YouTube Subscribe (+$2.00)
+                </Text>
+              </View>
+            )}
             <View style={styles.tagPill}>
               <Text style={styles.tagPillText}>🎯 Data Labeling</Text>
             </View>

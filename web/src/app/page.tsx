@@ -100,107 +100,114 @@ export default async function HomePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Hero Section */}
+      {/* Hero Section with Rich Background Imagery & Architectural Mesh */}
       <section className="hero">
-        <div className="hero-badge">
-          <Zap size={14} /> {formattedTotal} Live Verified Remote Opportunities
-        </div>
-        <h1 className="hero-title">
-          Land Your Dream <span>Remote Career</span> Anywhere In The World
-        </h1>
-        <p className="hero-subtitle">
-          Explore <strong>{formattedTotal}</strong> verified remote positions in software engineering, product, design, AI, data, marketing, and operations—complete with transparent salary benchmarks and in-depth distributed career guides.
-        </p>
+        <div className="hero-bg-layer" aria-hidden="true" />
+        <div className="hero-grid-pattern" aria-hidden="true" />
 
-        {/* Quick Search */}
-        <div className="search-wrapper">
-          <form action="/" method="GET" className="search-box">
-            <Search size={20} color="var(--text-subtle)" />
-            <input
-              type="text"
-              name="q"
-              defaultValue={searchQuery}
-              placeholder="Search by job title, skill (e.g. React, Python, Product), or company..."
-              className="search-input"
-              aria-label="Search remote jobs"
-            />
-            <button type="submit" className="btn-primary">
-              Find Jobs
-            </button>
-          </form>
+        <div className="hero-content">
+          <div className="hero-badge">
+            <Zap size={14} /> {formattedTotal} Live Verified Remote Opportunities
+          </div>
+          <h1 className="hero-title">
+            Land Your Dream <span>Remote Career</span> Anywhere In The World
+          </h1>
+          <p className="hero-subtitle">
+            Explore <strong>{formattedTotal}</strong> verified remote positions in software engineering, product, design, AI, data, marketing, and operations—complete with transparent salary benchmarks and in-depth distributed career guides.
+          </p>
 
-          {/* Category Filter Chips for SEO & UX - Clean Static URLs */}
-          <div
-            id="categories"
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              marginTop: '1.25rem',
-            }}
-          >
-            {[
-              { label: `🔥 All Remote (${formattedTotal})`, href: '/all-jobs' },
-              { label: '💻 Software & Engineering', href: '/category/development' },
-              { label: '🎨 Design & Creative', href: '/category/design' },
-              { label: '📈 Marketing & Growth', href: '/category/marketing' },
-              { label: '💼 Sales & Partnerships', href: '/category/sales' },
-              { label: '🎧 Customer Support', href: '/category/support' },
-              { label: '✍️ Editorial & Writing', href: '/category/writing' },
-              { label: '📊 Data Science & AI', href: '/category/data' },
-              { label: '💰 Finance & Operations', href: '/category/finance' },
-            ].map((cat) => (
-              <Link
-                key={cat.href}
-                href={cat.href}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: 'var(--text-muted)',
-                  border: '1px solid var(--border-color)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {cat.label}
-              </Link>
-            ))}
+          {/* Visual Remote Work Highlights Strip */}
+          <div className="hero-visual-strip">
+            <div className="hero-visual-card">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+                alt="Remote Engineer"
+                className="hero-visual-thumb"
+              />
+              <span>🌍 Work From 140+ Countries</span>
+            </div>
+            <div className="hero-visual-card">
+              <img
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
+                alt="Product Designer"
+                className="hero-visual-thumb"
+              />
+              <span>💰 Transparent USD Salary Bands</span>
+            </div>
+            <div className="hero-visual-card">
+              <img
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80"
+                alt="Distributed Team Lead"
+                className="hero-visual-thumb"
+              />
+              <span>🛡️ 100% Vetted Direct Employers</span>
+            </div>
           </div>
-        </div>
 
-        {/* Live Platform Metrics Bar */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-            gap: '1rem',
-            maxWidth: '960px',
-            margin: '0 auto',
-            padding: '1.25rem',
-            background: 'rgba(18, 31, 54, 0.7)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '1rem',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#38BDF8' }}>{formattedTotal}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Active Remote Jobs</div>
+          {/* Quick Search */}
+          <div className="search-wrapper">
+            <form action="/" method="GET" className="search-box">
+              <div className="search-input-group">
+                <Search size={20} color="#38BDF8" style={{ flexShrink: 0 }} />
+                <input
+                  type="text"
+                  name="q"
+                  defaultValue={searchQuery}
+                  placeholder="Search by job title, skill (React, Python, AI, Design), or company..."
+                  className="search-input"
+                  aria-label="Search remote jobs"
+                />
+              </div>
+              <button type="submit" className="btn-primary">
+                Find Jobs <ArrowRight size={16} />
+              </button>
+            </form>
+
+            {/* Category Filter Chips for SEO & UX - Clean Static URLs */}
+            <div id="categories" className="category-chips-wrapper">
+              <div className="category-chips-label">Explore Remote Categories</div>
+              <div className="category-chips-grid">
+                {[
+                  { label: `🔥 All Remote (${formattedTotal})`, href: '/all-jobs', active: true },
+                  { label: '💻 Software & Engineering', href: '/category/development', active: false },
+                  { label: '🎨 Design & Creative', href: '/category/design', active: false },
+                  { label: '📈 Marketing & Growth', href: '/category/marketing', active: false },
+                  { label: '💼 Sales & Partnerships', href: '/category/sales', active: false },
+                  { label: '🎧 Customer Support', href: '/category/support', active: false },
+                  { label: '✍️ Editorial & Writing', href: '/category/writing', active: false },
+                  { label: '📊 Data Science & AI', href: '/category/data', active: false },
+                  { label: '💰 Finance & Operations', href: '/category/finance', active: false },
+                ].map((cat) => (
+                  <Link
+                    key={cat.href}
+                    href={cat.href}
+                    className={`category-chip ${cat.active ? 'category-chip-active' : ''}`}
+                  >
+                    {cat.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#34D399' }}>100% Remote</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Location-Independent & Hybrid-Free</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#A855F7' }}>$65k – $215k</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Verified Annual Salary Benchmarks</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FBBF24' }}>Daily Curation</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Quality-Checked Employer Listings</div>
+
+          {/* Live Platform Metrics Bar */}
+          <div className="hero-metrics-grid">
+            <div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#38BDF8' }}>{formattedTotal}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Active Remote Jobs</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#34D399' }}>100% Remote</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Location-Independent Roles</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#A855F7' }}>$65k – $215k</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Verified Annual Salary Bands</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#FBBF24' }}>Daily Curation</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Quality-Checked Employers</div>
+            </div>
           </div>
         </div>
       </section>
@@ -308,7 +315,7 @@ export default async function HomePage({
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div className="job-card-right">
                     <div className="tags-row">
                       {job.tags &&
                         job.tags.slice(0, 3).map((tag, idx) => (
@@ -470,15 +477,7 @@ export default async function HomePage({
       </section>
 
       {/* Editorial Section 2: Global Remote Salary & Compensation Benchmarks */}
-      <section
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '1.5rem',
-          padding: '2.5rem',
-          marginBottom: '4.5rem',
-        }}
-      >
+      <section className="section-card">
         <div
           style={{
             display: 'flex',

@@ -358,15 +358,7 @@ export default async function JobDetailPage({ params }: Props) {
       </div>
 
       {/* Job Header Card */}
-      <div
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '1.25rem',
-          padding: '2.5rem',
-          marginBottom: '2rem',
-        }}
-      >
+      <div className="job-detail-header-card">
         <div
           style={{
             display: 'flex',
@@ -448,16 +440,8 @@ export default async function JobDetailPage({ params }: Props) {
       </div>
 
       {/* Job Body & Sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-        <div
-          style={{
-            gridColumn: 'span 2',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '1.25rem',
-            padding: '2.25rem',
-          }}
-        >
+      <div className="job-detail-layout">
+        <div className="job-detail-main-card">
           <h2
             style={{
               fontSize: '1.35rem',

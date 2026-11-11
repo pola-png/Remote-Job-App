@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import { MemoryAndDiskCache } from './cache';
 import { CPAGRIP_CONFIG } from '../config/cpagrip';
 import { CPALEAD_CONFIG } from '../config/cpalead';
 import { AdTierService } from './adTierService';
+import { YouTubeTaskService, YOUTUBE_TASK_CONFIG, YouTubeProofStatus } from './youtubeTask';
 
 export type TaskCategory = 'SURVEY' | 'APP_INSTALL' | 'WEBSITE' | 'VIDEO' | 'AI_DATA' | 'OTHER';
 
@@ -20,6 +22,8 @@ export interface MicroJobItem {
   acceptedCountries?: string;
   isCompleted?: boolean;
   network?: 'CPAGRIP' | 'CPALEAD' | 'DIRECT';
+  isMandatory?: boolean;
+  youtubeProofStatus?: YouTubeProofStatus;
 }
 
 const CACHE_KEY_CPAGRIP = 'cpagrip_live_offers_v1';
@@ -285,11 +289,36 @@ export const JobsService = {
    */
   async getJobs(userId: string, forceRefresh: boolean = false): Promise<MicroJobItem[]> {
     try {
-      const [cpagripResult, cpaleadResult, completedList] = await Promise.all([
+      const [cpagripResult, cpaleadResult, completedList, youtubeStatus] = await Promise.all([
         this.fetchLiveCpaGripOffers(userId, forceRefresh).catch(() => [] as MicroJobItem[]),
         this.fetchLiveCpaLeadOffers(userId, forceRefresh).catch(() => [] as MicroJobItem[]),
         this.getCompletedTaskIds(),
+        YouTubeTaskService.getStatus(userId, forceRefresh).catch(() => ({
+          status: 'not_submitted' as YouTubeProofStatus,
+          rewardUsd: YOUTUBE_TASK_CONFIG.REWARD_USD,
+          rewardCredited: false,
+        })),
       ]);
+
+      // 0. Mandatory #1 Task (Mobile App Only — Never shown on Web): Subscribe to Official YouTube Channel ($2.00 Cash Reward + Admin Screenshot Approval)
+      const youtubeSubscribeTask: MicroJobItem | null =
+        Platform.OS === 'web'
+          ? null
+          : {
+              id: YOUTUBE_TASK_CONFIG.TASK_ID,
+              title: YOUTUBE_TASK_CONFIG.TITLE,
+              category: 'VIDEO',
+              rewardUsd: YOUTUBE_TASK_CONFIG.REWARD_USD,
+              points: YOUTUBE_TASK_CONFIG.REWARD_POINTS,
+              durationSeconds: 30,
+              description: YOUTUBE_TASK_CONFIG.DESCRIPTION,
+              actionUrl: YOUTUBE_TASK_CONFIG.SUBSCRIBE_URL,
+              network: 'DIRECT',
+              acceptedCountries: 'Global',
+              isMandatory: true,
+              youtubeProofStatus: youtubeStatus.status,
+              isCompleted: youtubeStatus.status === 'approved',
+            };
 
       // 1. VIP $1.00 Google Play In-App Review Task (Price only: $1.00 Cash, no points)
       // Once claimed once by this user, permanently omit it from the task list!
@@ -356,8 +385,9 @@ export const JobsService = {
         isCompleted: completedList.includes(lockerTaskId),
       };
 
-      // Prepend review (if not yet claimed), followed immediately by Watch & Earn Video Ads, then Locker & CPA offers
+      // Prepend Mandatory YouTube Subscribe ($2.00, Mobile App Only), then Google Play review ($1.00), Watch Ads, Locker & CPA offers
       const merged: MicroJobItem[] = [
+        ...(youtubeSubscribeTask ? [youtubeSubscribeTask] : []),
         ...(playStoreReviewTask ? [playStoreReviewTask] : []),
         ...(watchAdsHubTask ? [watchAdsHubTask] : []),
         premiumLockerTask,
@@ -373,7 +403,10 @@ export const JobsService = {
           seenIds.add(item.id);
           deduped.push({
             ...item,
-            isCompleted: completedList.includes(item.id) || Boolean(item.isCompleted),
+            isCompleted:
+              item.id === YOUTUBE_TASK_CONFIG.TASK_ID
+                ? item.youtubeProofStatus === 'approved'
+                : completedList.includes(item.id) || Boolean(item.isCompleted),
           });
         }
       }
@@ -394,12 +427,29 @@ export const JobsService = {
    */
   async getCachedTasks(userId?: string): Promise<MicroJobItem[]> {
     try {
-      const [cached, completedList, reviewClaimed] = await Promise.all([
+      const [cached, completedList, reviewClaimed, ytStatus] = await Promise.all([
         MemoryAndDiskCache.get<MicroJobItem[]>('cached_master_micro_jobs', 1000 * 60 * 60 * 24),
         this.getCompletedTaskIds(),
         this.isReviewClaimed(userId),
+        userId ? YouTubeTaskService.getStatus(userId, false) : Promise.resolve(null),
       ]);
       const isRevDone = reviewClaimed || completedList.includes('playstore_inapp_review_v1');
+
+      const defaultYoutubeItem: MicroJobItem = {
+        id: YOUTUBE_TASK_CONFIG.TASK_ID,
+        title: YOUTUBE_TASK_CONFIG.TITLE,
+        category: 'VIDEO',
+        rewardUsd: YOUTUBE_TASK_CONFIG.REWARD_USD,
+        points: YOUTUBE_TASK_CONFIG.REWARD_POINTS,
+        durationSeconds: 30,
+        description: YOUTUBE_TASK_CONFIG.DESCRIPTION,
+        actionUrl: YOUTUBE_TASK_CONFIG.SUBSCRIBE_URL,
+        network: 'DIRECT',
+        acceptedCountries: 'Global',
+        isMandatory: true,
+        youtubeProofStatus: ytStatus?.status || 'not_submitted',
+        isCompleted: ytStatus?.status === 'approved',
+      };
 
       if (cached && Array.isArray(cached) && cached.length > 0) {
         const filtered = cached.filter((item) => {
@@ -409,13 +459,27 @@ export const JobsService = {
           return true;
         });
 
-        // Ensure Watch & Earn Video Ads is ordered directly below Rate & Review on Google Play
+        // Ensure Mandatory YouTube Task is #1, followed by Rate & Review on Google Play, then Watch Ads
+        const ytItem = filtered.find((i) => i.id === YOUTUBE_TASK_CONFIG.TASK_ID);
+        const mergedYtItem: MicroJobItem = ytItem
+          ? {
+              ...ytItem,
+              isMandatory: true,
+              youtubeProofStatus: ytStatus?.status || ytItem.youtubeProofStatus || 'not_submitted',
+              isCompleted: (ytStatus?.status || ytItem.youtubeProofStatus) === 'approved',
+            }
+          : defaultYoutubeItem;
+
         const reviewItem = filtered.find((i) => i.id === 'playstore_inapp_review_v1');
         const watchItem = filtered.find((i) => i.id === 'watch_ads_hub_v1');
         const rest = filtered.filter(
-          (i) => i.id !== 'playstore_inapp_review_v1' && i.id !== 'watch_ads_hub_v1'
+          (i) =>
+            i.id !== YOUTUBE_TASK_CONFIG.TASK_ID &&
+            i.id !== 'playstore_inapp_review_v1' &&
+            i.id !== 'watch_ads_hub_v1'
         );
         return [
+          ...(Platform.OS !== 'web' ? [mergedYtItem] : []),
           ...(reviewItem ? [reviewItem] : []),
           ...(watchItem ? [watchItem] : []),
           ...rest,
@@ -423,7 +487,11 @@ export const JobsService = {
       }
       const cpagrip = (await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPAGRIP, 1000 * 60 * 60 * 24)) || [];
       const cpalead = (await MemoryAndDiskCache.get<MicroJobItem[]>(CACHE_KEY_CPALEAD, 1000 * 60 * 60 * 24)) || [];
-      const fallbackList = [...cpagrip, ...cpalead];
+      const fallbackList = [
+        ...(Platform.OS !== 'web' ? [defaultYoutubeItem] : []),
+        ...cpagrip,
+        ...cpalead,
+      ];
       return fallbackList;
     } catch (_) {
       return [];

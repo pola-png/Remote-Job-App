@@ -92,15 +92,7 @@ export default async function AllJobsDirectoryPage({
         </Link>
       </div>
 
-      <div
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '1.25rem',
-          padding: '2.5rem',
-          marginBottom: '2rem',
-        }}
-      >
+      <div className="job-detail-header-card">
         <div
           style={{
             display: 'inline-flex',
@@ -117,10 +109,10 @@ export default async function AllJobsDirectoryPage({
         >
           <ShieldCheck size={15} /> {totalCount.toLocaleString()} Total Verified Remote Positions
         </div>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+        <h1 style={{ fontSize: '2.15rem', fontWeight: 800, marginBottom: '0.75rem', lineHeight: 1.2 }}>
           Complete Remote Jobs Directory
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', maxWidth: '750px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '750px', lineHeight: '1.6' }}>
           Browse every active, quality-checked remote career opportunity across Engineering, Product, Design, Data Science, Marketing, Sales, Finance, and Customer Support.
         </p>
 
@@ -131,18 +123,20 @@ export default async function AllJobsDirectoryPage({
           className="search-box"
           style={{ marginTop: '1.5rem', maxWidth: '680px', background: 'var(--bg-secondary)' }}
         >
-          <Search size={18} color="var(--text-subtle)" />
-          <input
-            type="text"
-            name="q"
-            defaultValue={searchQuery}
-            placeholder="Filter all jobs by title or company..."
-            className="search-input"
-            aria-label="Filter jobs in directory"
-          />
+          <div className="search-input-group">
+            <Search size={18} color="#38BDF8" style={{ flexShrink: 0 }} />
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchQuery}
+              placeholder="Filter all jobs by title or company..."
+              className="search-input"
+              aria-label="Filter jobs in directory"
+            />
+          </div>
           {categoryFilter && <input type="hidden" name="category" value={categoryFilter} />}
-          <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1.15rem', fontSize: '0.88rem' }}>
-            Filter
+          <button type="submit" className="btn-primary" style={{ padding: '0.55rem 1.25rem', fontSize: '0.88rem' }}>
+            Filter Jobs
           </button>
         </form>
 
@@ -199,7 +193,7 @@ export default async function AllJobsDirectoryPage({
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <div className="job-card-right">
               <div className="tags-row">
                 {job.tags &&
                   job.tags.slice(0, 2).map((tag, idx) => (

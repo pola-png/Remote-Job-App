@@ -111,23 +111,9 @@ export default function CookieConsent() {
         onClick={() => setIsVisible(true)}
         aria-label="Manage Cookie and Cache Preferences"
         title="Cookie & Privacy Preferences"
-        style={{
-          position: 'fixed',
-          bottom: '1rem',
-          left: '1rem',
-          zIndex: 9990,
-          background: 'rgba(18, 31, 54, 0.9)',
-          border: '1px solid var(--border-color)',
-          color: 'var(--text-muted)',
-          borderRadius: '9999px',
-          padding: '0.4rem 0.85rem',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          cursor: 'pointer',
-          backdropFilter: 'blur(8px)',
-        }}
+        className="cookie-floating-trigger"
       >
-        🍪 Cookie Settings
+        🍪 Privacy
       </button>
     ) : null;
   }
@@ -136,194 +122,176 @@ export default function CookieConsent() {
     <aside
       role="dialog"
       aria-label="Cookie and Cache Consent Banner"
-      style={{
-        position: 'fixed',
-        bottom: '1.5rem',
-        right: '1.5rem',
-        maxWidth: '520px',
-        width: 'calc(100% - 3rem)',
-        background: 'rgba(13, 22, 39, 0.98)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(56, 189, 248, 0.4)',
-        borderRadius: '1.15rem',
-        padding: '1.4rem 1.6rem',
-        boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.15)',
-        zIndex: 99999,
-        animation: 'slideUp 0.3s ease-out forwards',
-        fontFamily: 'inherit',
-      }}
+      className="cookie-banner"
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.9rem' }}>
-        <span style={{ fontSize: '1.6rem', lineHeight: 1 }} role="img" aria-label="Cookie">
-          🍪
-        </span>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.4rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '1.15rem', lineHeight: 1 }} role="img" aria-label="Cookie">
+            🍪
+          </span>
           <h4
             style={{
-              fontSize: '1.05rem',
+              fontSize: '0.95rem',
               fontWeight: 800,
               color: '#F8FAFC',
-              marginBottom: '0.35rem',
+              margin: 0,
             }}
           >
-            Cookie, Cache & Advertising Preferences
+            Cookie &amp; Privacy Preferences
           </h4>
-          <p
+        </div>
+        <button
+          type="button"
+          onClick={handleAcceptAll}
+          aria-label="Close cookie banner"
+          style={{
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#94A3B8',
+            borderRadius: '50%',
+            width: '26px',
+            height: '26px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <p
+        style={{
+          fontSize: '0.8rem',
+          color: '#94A3B8',
+          lineHeight: '1.48',
+          marginBottom: '0.85rem',
+        }}
+      >
+        We use cookies &amp; cache to speed up job search, analyze traffic, and serve relevant ads. See our{' '}
+        <Link
+          href="/privacy"
+          style={{
+            color: '#38BDF8',
+            textDecoration: 'underline',
+            fontWeight: 600,
+          }}
+        >
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
+      {showDetails && (
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '0.75rem',
+            padding: '0.75rem',
+            marginBottom: '0.85rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.55rem',
+            fontSize: '0.78rem',
+          }}
+        >
+          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', color: '#E2E8F0' }}>
+            <span>
+              <strong>Essential &amp; Cache</strong> (Required)
+            </span>
+            <input type="checkbox" checked disabled />
+          </label>
+
+          <label
             style={{
-              fontSize: '0.84rem',
-              color: '#94A3B8',
-              lineHeight: '1.55',
-              marginBottom: '1rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#E2E8F0',
+              cursor: 'pointer',
             }}
           >
-            We use browser cache and cookies to speed up job search, analyze traffic, and serve personalized or non-personalized ads via Google AdSense. You can accept all cookies, reject non-essential cookies, or customize your preferences at any time. Read our{' '}
-            <Link
-              href="/privacy"
-              style={{
-                color: '#38BDF8',
-                textDecoration: 'underline',
-                fontWeight: 600,
-              }}
-            >
-              Privacy & Cookie Policy
-            </Link>
-            .
-          </p>
+            <span>
+              <strong>Analytics Storage</strong> (Site performance)
+            </span>
+            <input
+              type="checkbox"
+              checked={prefs.analytics}
+              onChange={(e) => setPrefs({ ...prefs, analytics: e.target.checked })}
+            />
+          </label>
 
-          {showDetails && (
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '0.75rem',
-                padding: '0.9rem',
-                marginBottom: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.65rem',
-                fontSize: '0.82rem',
-              }}
-            >
-              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#E2E8F0' }}>
-                <span>
-                  <strong>Essential & Cache Storage</strong> (Required for site navigation)
-                </span>
-                <input type="checkbox" checked disabled />
-              </label>
-
-              <label
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  color: '#E2E8F0',
-                  cursor: 'pointer',
-                }}
-              >
-                <span>
-                  <strong>Analytics Storage</strong> (Anonymous performance metrics)
-                </span>
-                <input
-                  type="checkbox"
-                  checked={prefs.analytics}
-                  onChange={(e) => setPrefs({ ...prefs, analytics: e.target.checked })}
-                />
-              </label>
-
-              <label
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  color: '#E2E8F0',
-                  cursor: 'pointer',
-                }}
-              >
-                <span>
-                  <strong>Google AdSense & Personalized Ads</strong> (Ad storage & personalization)
-                </span>
-                <input
-                  type="checkbox"
-                  checked={prefs.advertising}
-                  onChange={(e) => setPrefs({ ...prefs, advertising: e.target.checked })}
-                />
-              </label>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={handleAcceptAll}
-              style={{
-                background: 'linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '9999px',
-                padding: '0.5rem 1.15rem',
-                fontSize: '0.83rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Accept All
-            </button>
-
-            <button
-              type="button"
-              onClick={handleRejectAll}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#E2E8F0',
-                border: '1px solid rgba(255, 255, 255, 0.16)',
-                borderRadius: '9999px',
-                padding: '0.5rem 1.05rem',
-                fontSize: '0.83rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Reject Non-Essential
-            </button>
-
-            {!showDetails ? (
-              <button
-                type="button"
-                onClick={() => setShowDetails(true)}
-                style={{
-                  background: 'transparent',
-                  color: '#38BDF8',
-                  border: 'none',
-                  padding: '0.45rem 0.6rem',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                }}
-              >
-                Customize
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSaveCustom}
-                style={{
-                  background: 'rgba(16, 185, 129, 0.18)',
-                  color: '#34D399',
-                  border: '1px solid rgba(52, 211, 153, 0.4)',
-                  borderRadius: '9999px',
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.83rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Save Preferences
-              </button>
-            )}
-          </div>
+          <label
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#E2E8F0',
+              cursor: 'pointer',
+            }}
+          >
+            <span>
+              <strong>Personalized Ads</strong> (Google AdSense)
+            </span>
+            <input
+              type="checkbox"
+              checked={prefs.advertising}
+              onChange={(e) => setPrefs({ ...prefs, advertising: e.target.checked })}
+            />
+          </label>
         </div>
+      )}
+
+      <div className="cookie-actions">
+        <button
+          type="button"
+          onClick={handleAcceptAll}
+          className="cookie-btn-accept"
+        >
+          Accept All
+        </button>
+
+        <button
+          type="button"
+          onClick={handleRejectAll}
+          className="cookie-btn-reject"
+        >
+          Essential Only
+        </button>
+
+        {!showDetails ? (
+          <button
+            type="button"
+            onClick={() => setShowDetails(true)}
+            className="cookie-customize-btn"
+            style={{
+              background: 'transparent',
+              color: '#38BDF8',
+              border: 'none',
+              padding: '0.4rem 0.5rem',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            Customize
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleSaveCustom}
+            className="cookie-btn-save cookie-customize-btn"
+          >
+            Save Preferences
+          </button>
+        )}
       </div>
     </aside>
   );

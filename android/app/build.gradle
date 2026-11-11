@@ -9,7 +9,7 @@ def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
-    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    entryFile = file("../../index.js")
     reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
     hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
@@ -81,8 +81,6 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
-    ndkVersion rootProject.ext.ndkVersion
-
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
@@ -91,19 +89,10 @@ android {
         applicationId 'com.xapzap.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 71
-        versionName "30.0.26"
+        versionCode 72
+        versionName "30.0.27"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-        }
-        externalNativeBuild {
-            cmake {
-                arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
-                cppFlags "-Wl,-z,max-page-size=16384"
-            }
-            ndkBuild {
-                arguments "APP_LDFLAGS+=-Wl,-z,max-page-size=16384"
-            }
         }
     }
     signingConfigs {
@@ -117,7 +106,7 @@ android {
             if (file('upload-key.jks').exists()) {
                 storeFile file('upload-key.jks')
                 storePassword 'Xapzap@$'
-                keyAlias 'xapzap'
+                keyAlias 'Xapzap'
                 keyPassword 'Xapzap@$'
             } else if (file('../key.properties').exists()) {
                 def keystoreProperties = new Properties()
@@ -127,7 +116,10 @@ android {
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
             } else {
-                signingConfig signingConfigs.debug
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
             }
         }
     }
@@ -232,15 +224,19 @@ apply plugin: "com.google.gms.google-services"
 
 // Automatic 16 KB Memory Page Size Support hook for Google Play (Android 15+)
 tasks.whenTaskAdded { task ->
+    if (task.name == 'createBundleReleaseJsAndAssets') {
+        task.onlyIf {
+            !file("${buildDir}/generated/assets/createBundleReleaseJsAndAssets/index.android.bundle").exists()
+        }
+    }
     if (task.name.startsWith('merge') && task.name.endsWith('NativeLibs')) {
         task.doLast {
-            def pythonCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'python' : 'python3'
-            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.py")
+            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.js")
             if (scriptFile.exists()) {
                 def mDir = file("${buildDir}/intermediates/merged_native_libs")
                 if (mDir.exists()) {
                     exec {
-                        commandLine pythonCmd, scriptFile.absolutePath, mDir.absolutePath
+                        commandLine 'node', scriptFile.absolutePath, mDir.absolutePath
                     }
                 }
             }
@@ -248,13 +244,12 @@ tasks.whenTaskAdded { task ->
     }
     if (task.name.startsWith('strip') && task.name.endsWith('DebugSymbols')) {
         task.doLast {
-            def pythonCmd = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'python' : 'python3'
-            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.py")
+            def scriptFile = file("${rootDir}/../scripts/patch_elf_16kb.js")
             if (scriptFile.exists()) {
                 def sDir = file("${buildDir}/intermediates/stripped_native_libs")
                 if (sDir.exists()) {
                     exec {
-                        commandLine pythonCmd, scriptFile.absolutePath, sDir.absolutePath
+                        commandLine 'node', scriptFile.absolutePath, sDir.absolutePath
                     }
                 }
             }

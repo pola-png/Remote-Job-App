@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import {
   Wallet,
@@ -21,11 +22,18 @@ import {
   Building,
   Coins,
   Settings,
+  Play,
 } from '../components/LucideIcons';
 import { JobsService } from '../services/jobs';
 import { PayoutService, PayoutHistoryItem, UserWithdrawalDetails } from '../services/payout';
 import { PayoutVerificationScreen } from './PayoutVerificationScreen';
 import { WithdrawalSettingsScreen } from './WithdrawalSettingsScreen';
+import { YouTubeSubscribeTaskScreen } from './YouTubeSubscribeTaskScreen';
+import {
+  YouTubeTaskService,
+  YouTubeTaskStatusInfo,
+  YOUTUBE_TASK_CONFIG,
+} from '../services/youtubeTask';
 
 interface Props {
   userId: string;
@@ -37,6 +45,12 @@ export const PayoutScreen: React.FC<Props> = ({ userId }: Props) => {
     isVerified: false,
     status: 'unverified',
   });
+  const [youtubeStatus, setYoutubeStatus] = useState<YouTubeTaskStatusInfo>({
+    status: 'not_submitted',
+    rewardUsd: YOUTUBE_TASK_CONFIG.REWARD_USD,
+    rewardCredited: false,
+  });
+  const [showYouTubeScreen, setShowYouTubeScreen] = useState<boolean>(false);
   const [payouts, setPayouts] = useState<PayoutHistoryItem[]>([]);
   const [savedDetails, setSavedDetails] = useState<UserWithdrawalDetails | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -53,16 +67,20 @@ export const PayoutScreen: React.FC<Props> = ({ userId }: Props) => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const loadData = async () => {
-    const [userBal, kyc, hist, saved] = await Promise.all([
+    const [userBal, kyc, hist, saved, yt] = await Promise.all([
       JobsService.getBalance(userId),
       PayoutService.getKycStatus(userId),
       PayoutService.getRecentPayouts(userId),
       PayoutService.getSavedWithdrawalDetails(userId),
+      YouTubeTaskService.getStatus(userId),
     ]);
     setBalance(userBal);
     setKycStatus(kyc);
     setPayouts(hist);
     setSavedDetails(saved);
+    if (yt) {
+      setYoutubeStatus(yt);
+    }
 
     if (saved) {
       setPayoutMethod(saved.preferredMethod || 'BANK');
@@ -85,6 +103,32 @@ export const PayoutScreen: React.FC<Props> = ({ userId }: Props) => {
   };
 
   const handleRequestPayout = async () => {
+    // Enforce Mandatory YouTube Channel Subscription & Admin Approval before withdrawal
+    const latestYt = await YouTubeTaskService.getStatus(userId, true);
+    setYoutubeStatus(latestYt);
+    if (!YouTubeTaskService.isApprovedForPayout(latestYt)) {
+      if (latestYt.status === 'pending') {
+        Alert.alert(
+          '⏳ YouTube Verification Pending',
+          'Your YouTube subscription screenshot is currently pending Admin approval (+$2.00 reward). Withdrawals unlock automatically once Admin approves your screenshot.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          '🔴 Mandatory YouTube Task Required',
+          'All members must subscribe to our official YouTube channel and submit a screenshot for Admin approval (+$2.00 reward) before requesting a withdrawal.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Complete Task (+$2.00)',
+              onPress: () => setShowYouTubeScreen(true),
+            },
+          ]
+        );
+      }
+      return;
+    }
+
     if (balance < PayoutService.MINIMUM_PAYOUT_USD) {
       Alert.alert(
         'Threshold Not Reached',
@@ -152,6 +196,22 @@ export const PayoutScreen: React.FC<Props> = ({ userId }: Props) => {
       Alert.alert('Error', res.message);
     }
   };
+
+  if (showYouTubeScreen) {
+    return (
+      <YouTubeSubscribeTaskScreen
+        userId={userId}
+        onBack={() => {
+          setShowYouTubeScreen(false);
+          loadData();
+        }}
+        onStatusUpdated={(newSt) => {
+          setYoutubeStatus(newSt);
+          loadData();
+        }}
+      />
+    );
+  }
 
   if (showVerificationScreen) {
     return (
@@ -274,6 +334,60 @@ export const PayoutScreen: React.FC<Props> = ({ userId }: Props) => {
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Mandatory YouTube Channel Subscription Status Card (Mobile App Only) */}
+        {Platform.OS !== 'web' && (
+        <TouchableOpacity
+          style={[
+            styles.infoCard,
+            youtubeStatus.status !== 'approved' && { borderColor: '#EF4444' },
+          ]}
+          onPress={() => setShowYouTubeScreen(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.infoRow}>
+            <Play
+              color={youtubeStatus.status === 'approved' ? '#34D399' : '#EF4444'}
+              size={24}
+            />
+            <View style={styles.infoTextContainer}>
+              <Text style={styles.infoTitle}>Mandatory YouTube Subscribe (+$2.00)</Text>
+              <Text style={styles.infoDesc}>
+                {youtubeStatus.status === 'approved'
+                  ? 'Subscribed & verified by Admin. +$2.00 reward credited and payouts unlocked.'
+                  : youtubeStatus.status === 'pending'
+                  ? 'Screenshot submitted! Waiting for Admin approval to credit +$2.00 and unlock payouts.'
+                  : 'Required for all members: Subscribe to our YouTube channel & submit screenshot proof.'}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statusPill,
+                youtubeStatus.status === 'pending' && { backgroundColor: '#78350F' },
+                (youtubeStatus.status === 'not_submitted' || youtubeStatus.status === 'rejected') && {
+                  backgroundColor: '#7F1D1D',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusPillText,
+                  youtubeStatus.status === 'pending' && { color: '#FDE68A' },
+                  (youtubeStatus.status === 'not_submitted' || youtubeStatus.status === 'rejected') && {
+                    color: '#FCA5A5',
+                  },
+                ]}
+              >
+                {youtubeStatus.status === 'approved'
+                  ? 'APPROVED'
+                  : youtubeStatus.status === 'pending'
+                  ? 'PENDING'
+                  : 'REQUIRED'}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        )}
 
         {/* Verification Status Card */}
         <TouchableOpacity

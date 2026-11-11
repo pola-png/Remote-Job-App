@@ -18,7 +18,7 @@ def main():
 
     # 1. Gradle bundleRelease
     print("Building Android release bundle via Gradle...")
-    gradle_cmd = r".\gradlew.bat bundleRelease --no-daemon" if os.name == 'nt' else "./gradlew bundleRelease --no-daemon"
+    gradle_cmd = r".\gradlew.bat bundleRelease" if os.name == 'nt' else "./gradlew bundleRelease"
     run_cmd(gradle_cmd, cwd=android_dir)
 
     # 2. Patch AAB for 16 KB page size compliance and re-sign with upload-key.jks

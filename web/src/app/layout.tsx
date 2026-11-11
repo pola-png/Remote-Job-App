@@ -119,6 +119,13 @@ export default function RootLayout({
               <Link href="/post-job" className="btn-primary">Post a Job</Link>
             </nav>
           </div>
+          <nav className="mobile-nav-strip" aria-label="Mobile Navigation">
+            <Link href="/all-jobs" className="mobile-nav-pill">🔥 Browse All Jobs</Link>
+            <Link href="/salary-guide" className="mobile-nav-pill">💰 Salary Guide</Link>
+            <Link href="/guides" className="mobile-nav-pill">📘 Career Guides</Link>
+            <Link href="/about" className="mobile-nav-pill">🛡️ About Us</Link>
+            <Link href="/post-job" className="mobile-nav-pill mobile-nav-pill-cta">+ Post a Job</Link>
+          </nav>
         </header>
 
         <main>{children}</main>

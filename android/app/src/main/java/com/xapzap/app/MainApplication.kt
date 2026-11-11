@@ -9,12 +9,10 @@ import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
-
-import expo.modules.ApplicationLifecycleDispatcher
-import expo.modules.ReactNativeHostWrapper
 
 import android.util.Log
 import com.inmobi.sdk.InMobiSdk
@@ -23,30 +21,29 @@ import org.json.JSONObject
 
 class MainApplication : Application(), ReactApplication {
 
-  override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
-        this,
-        object : DefaultReactNativeHost(this) {
-          override fun getPackages(): List<ReactPackage> {
-            val packages = PackageList(this).packages.toMutableList()
-            packages.add(InAppUpdatePackage())
-            packages.add(InAppReviewPackage())
-            packages.add(GooglePlayBillingPackage())
-            packages.add(FirebasePushPackage())
-            packages.add(InMobiPackage())
-            return packages
-          }
+  override val reactNativeHost: ReactNativeHost =
+      object : DefaultReactNativeHost(this) {
+        override fun getPackages(): List<ReactPackage> {
+          val packages = PackageList(this).packages.toMutableList()
+          packages.add(InAppUpdatePackage())
+          packages.add(InAppReviewPackage())
+          packages.add(ScreenshotPickerPackage())
+          packages.add(GooglePlayBillingPackage())
+          packages.add(FirebasePushPackage())
+          packages.add(InMobiPackage())
+          return packages
+        }
 
-          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
+        override fun getJSMainModuleName(): String = "index"
 
-          override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 
-          override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-          override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+        override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
       }
-  )
 
   override val reactHost: ReactHost
-    get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
+    get() = getDefaultReactHost(applicationContext, reactNativeHost)
 
   override fun onCreate() {
     super.onCreate()
@@ -55,7 +52,6 @@ class MainApplication : Application(), ReactApplication {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
     }
-    ApplicationLifecycleDispatcher.onApplicationCreate(this)
 
     // Pre-initialize InMobi SDK natively at startup
     try {
@@ -73,10 +69,5 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: Exception) {
       Log.e("InMobi", "Failed to pre-init InMobi SDK in MainApplication: ${e.message}")
     }
-  }
-
-  override fun onConfigurationChanged(newConfig: Configuration) {
-    super.onConfigurationChanged(newConfig)
-    ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
   }
 }
