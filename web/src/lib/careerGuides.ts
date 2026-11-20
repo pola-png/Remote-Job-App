@@ -184,7 +184,7 @@ export const CAREER_GUIDES: CareerGuide[] = [
         ],
         callout: {
           title: 'Report Suspicious Activity Instantly',
-          text: 'If you ever encounter a suspicious communication claiming to represent an employer on our platform, contact our Trust & Safety team at support@remotejobshq.online so we can investigate and block the actor.',
+          text: 'If you ever encounter a suspicious communication claiming to represent an employer on our platform, contact our Trust & Safety team at SupportRemotehq@gmail.com so we can investigate and block the actor.',
         },
       },
       {

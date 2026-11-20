@@ -139,8 +139,8 @@ export default function RootLayout({
                   An independent remote career publication, compensation research hub, and curated job platform connecting distributed professionals with verified global employers.
                 </p>
                 <div style={{ marginTop: '0.9rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.8' }}>
-                  <div>📧 <strong>Direct Support:</strong> <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8', textDecoration: 'underline' }}>support@remotejobshq.online</a></div>
-                  <div>🏢 <strong>Employer Relations:</strong> <a href="mailto:employers@remotejobshq.online" style={{ color: '#34D399' }}>employers@remotejobshq.online</a></div>
+                  <div>📧 <strong>Direct Support:</strong> <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#38BDF8', textDecoration: 'underline' }}>SupportRemotehq@gmail.com</a></div>
+                  <div>🏢 <strong>Employer Relations:</strong> <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#34D399' }}>SupportRemotehq@gmail.com</a></div>
                   <div>⏱️ <strong>Response SLA:</strong> Mon–Fri within 24 business hours</div>
                 </div>
                 <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -198,7 +198,7 @@ export default function RootLayout({
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#F8FAFC', marginBottom: '1rem' }}>Contact & Trust</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
                   <Link href="/contact" className="nav-link" style={{ color: '#38BDF8', fontWeight: 600 }}>💬 Contact Support Desk</Link>
-                  <a href="mailto:support@remotejobshq.online" className="nav-link">📧 support@remotejobshq.online</a>
+                  <a href="mailto:SupportRemotehq@gmail.com" className="nav-link">📧 SupportRemotehq@gmail.com</a>
                   <Link href="/about" className="nav-link">About Us & Editorial Standards</Link>
                   <Link href="/post-job" className="nav-link">Post a Remote Job (Moderated)</Link>
                   <Link href="/privacy" className="nav-link">Privacy & Cookie Policy</Link>

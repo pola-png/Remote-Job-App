@@ -88,8 +88,8 @@ export default function TermsPage() {
         </h2>
         <p style={{ color: 'var(--text-muted)' }}>
           Questions regarding these Terms should be directed to{' '}
-          <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8', fontWeight: 600 }}>
-            support@remotejobshq.online
+          <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#38BDF8', fontWeight: 600 }}>
+            SupportRemotehq@gmail.com
           </a>{' '}
           or submitted via our{' '}
           <Link href="/contact" style={{ color: '#38BDF8', fontWeight: 600 }}>

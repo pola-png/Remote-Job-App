@@ -136,8 +136,8 @@ export default function PrivacyPage() {
         </h2>
         <p style={{ color: 'var(--text-muted)' }}>
           For any privacy-related questions or data deletion requests, please contact our team at{' '}
-          <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8', fontWeight: 600 }}>
-            support@remotejobshq.online
+          <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#38BDF8', fontWeight: 600 }}>
+            SupportRemotehq@gmail.com
           </a>{' '}
           or via our{' '}
           <Link href="/contact" style={{ color: '#38BDF8', fontWeight: 600 }}>

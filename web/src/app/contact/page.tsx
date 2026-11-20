@@ -88,8 +88,8 @@ export default function ContactPage() {
             <p style={{ fontSize: '0.83rem', color: 'var(--text-subtle)', marginBottom: '0.6rem' }}>
               Questions about listings, career guides, or our mobile app.
             </p>
-            <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8', fontSize: '0.88rem', fontWeight: 700 }}>
-              support@remotejobshq.online
+            <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#38BDF8', fontSize: '0.88rem', fontWeight: 700 }}>
+              SupportRemotehq@gmail.com
             </a>
           </div>
 
@@ -105,8 +105,8 @@ export default function ContactPage() {
             <p style={{ fontSize: '0.83rem', color: 'var(--text-subtle)', marginBottom: '0.6rem' }}>
               Direct job postings, featured employer slots, and billing.
             </p>
-            <a href="mailto:employers@remotejobshq.online" style={{ color: '#34D399', fontSize: '0.88rem', fontWeight: 700 }}>
-              employers@remotejobshq.online
+            <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#34D399', fontSize: '0.88rem', fontWeight: 700 }}>
+              SupportRemotehq@gmail.com
             </a>
           </div>
 
@@ -122,8 +122,8 @@ export default function ContactPage() {
             <p style={{ fontSize: '0.83rem', color: 'var(--text-subtle)', marginBottom: '0.6rem' }}>
               Press inquiries, salary research, and data privacy requests.
             </p>
-            <a href="mailto:editorial@remotejobshq.online" style={{ color: '#A855F7', fontSize: '0.88rem', fontWeight: 700 }}>
-              editorial@remotejobshq.online
+            <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#A855F7', fontSize: '0.88rem', fontWeight: 700 }}>
+              SupportRemotehq@gmail.com
             </a>
           </div>
         </div>
@@ -271,7 +271,7 @@ export default function ContactPage() {
             </div>
             <div>Monday – Friday: 08:00 to 18:00 UTC</div>
             <div>Response Time: Within 24 business hours</div>
-            <div>Direct Support: <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8' }}>support@remotejobshq.online</a></div>
+            <div>Direct Support: <a href="mailto:SupportRemotehq@gmail.com" style={{ color: '#38BDF8' }}>SupportRemotehq@gmail.com</a></div>
           </div>
         </div>
       </div>
