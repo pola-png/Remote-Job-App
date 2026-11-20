@@ -104,14 +104,36 @@ export function sanitizeJobText(text?: string): string {
 
 export function sanitizeTagLabel(tag: string): string {
   if (!tag) return '';
+  const lower = tag.toLowerCase().trim();
+
+  // Drop any tag containing web domains or external aggregator names (e.g. ProgrammingRemoteJobs.org)
+  if (
+    lower.includes('.org') ||
+    lower.includes('.com') ||
+    lower.includes('.io') ||
+    lower.includes('.app') ||
+    lower.includes('.net') ||
+    lower.includes('.co') ||
+    lower.includes('remotejob') ||
+    lower.includes('jobicy') ||
+    lower.includes('himalayas') ||
+    lower.includes('remotive') ||
+    lower.includes('arbeitnow') ||
+    lower.includes('remoteok') ||
+    lower.includes('weworkremotely')
+  ) {
+    return '';
+  }
+
   let cleaned = tag
-    .replace(AGGREGATOR_NAMES_REGEX, '')
     .replace(/\(.*?\)/g, '')
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (cleaned.length < 2 || cleaned.length > 32) return '';
+  if (cleaned.length < 2 || cleaned.length > 28) return '';
+  if (/^\d+$/.test(cleaned)) return '';
+
   return cleaned
     .split(' ')
     .map((w) => (w.length <= 3 && w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
