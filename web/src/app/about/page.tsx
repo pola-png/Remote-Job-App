@@ -68,7 +68,7 @@ export default function AboutPage() {
         </p>
 
         <h2 style={{ fontSize: '1.55rem', fontWeight: 800, marginBottom: '1rem', color: '#F8FAFC' }}>
-          Our 4-Stage Curation & Employer Verification Standard
+          Our Job Sourcing & Curation Standards
         </h2>
 
         <div
@@ -81,20 +81,20 @@ export default function AboutPage() {
         >
           {[
             {
-              title: '1. Corporate & Domain Verification',
-              text: 'Every hiring company is checked for an active corporate presence, verifiable product or service offering, and legitimate recruiting workflow.',
+              title: '1. Employer Domain & Legitimacy Screening',
+              text: 'Every featured company is verified against active commercial web domains, legitimate recruiting pipelines, and verifiable products or services.',
             },
             {
-              title: '2. True Remote Eligibility Audit',
-              text: 'We classify roles by exact workplace flexibility—distinguishing 100% Worldwide Anywhere positions from timezone-aligned regional remote roles.',
+              title: '2. Remote Flexibility Classification',
+              text: 'We audit location eligibility for each opening, distinguishing 100% Worldwide Anywhere positions from timezone-bound or regional remote roles.',
             },
             {
-              title: '3. Salary & Market Benchmarking',
-              text: 'When an employer does not publicly disclose a pay range, our compensation engine attaches a transparent market benchmark based on role, category, and seniority.',
+              title: '3. Transparent Sourcing & Labels',
+              text: 'We clearly differentiate between direct employer postings and curated roles aggregated from authentic employer feeds, ensuring full sourcing transparency.',
             },
             {
-              title: '4. Continuous Expiration & Quality Hygiene',
-              text: 'Listings are monitored daily and automatically retired once filled or past our freshness window so job seekers never waste time on stale openings.',
+              title: '4. Continuous Expiration & Hygiene',
+              text: 'Listings are monitored regularly and retired once filled or expired, preventing job seekers from wasting time on inactive openings.',
             },
           ].map((item, idx) => (
             <div

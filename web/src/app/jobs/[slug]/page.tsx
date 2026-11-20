@@ -52,7 +52,7 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
   try {
     const slug = decodeURIComponent(rawSlug).trim();
 
-    // 1. Direct match by exact ID if someone visits legacy link
+    // 1. Direct match by exact ID if someone visits legacy or direct link
     const { data: directData } = await supabase
       .from('job_postings')
       .select('*')
@@ -70,12 +70,12 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
 
       let query = supabase.from('job_postings').select('*');
       if (words.length >= 3) {
-        query = query.ilike('title', `%${words[0]}%${words[1]}%`);
-      } else {
         query = query.or(`title.ilike.%${firstWord}%,company.ilike.%${lastWord}%`);
+      } else {
+        query = query.or(`title.ilike.%${firstWord}%,company.ilike.%${firstWord}%`);
       }
 
-      const { data: candidates } = await query.order('created_at', { ascending: false }).limit(50);
+      const { data: candidates } = await query.order('created_at', { ascending: false }).limit(60);
 
       let candidateList = candidates && candidates.length > 0 ? candidates : [];
       if (candidateList.length === 0) {
@@ -83,7 +83,7 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
           .from('job_postings')
           .select('*')
           .ilike('title', `%${firstWord}%`)
-          .limit(50);
+          .limit(40);
         if (fallbackList) candidateList = fallbackList;
       }
 
@@ -98,11 +98,30 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
           const cTitleSlug = slugify(c.title);
           const cCompanySlug = slugify(c.company);
 
-          if (cHashSlug === slug) score += 120;
-          if (cRichSlug === slug) score += 100;
-          if (cTitleSlug === slug) score += 80;
-          if (slug.startsWith(cTitleSlug)) score += 40;
-          if (cCompanySlug && slug.includes(cCompanySlug)) score += 30;
+          // Exact slug matches
+          if (cHashSlug === slug) score += 500;
+          if (cRichSlug === slug) score += 400;
+
+          // Company verification: Candidate company MUST match if company is in the slug
+          const companyWords = cCompanySlug.split('-').filter((w) => w.length >= 3);
+          const hasCompanyInSlug = companyWords.some((w) => slug.includes(w));
+
+          if (hasCompanyInSlug) {
+            score += 200;
+          } else if (words.length >= 4) {
+            // Slug includes title + company. If this candidate's company is not in the slug,
+            // penalize heavily to prevent returning the wrong employer!
+            score -= 300;
+          }
+
+          // Title matching
+          if (cTitleSlug === slug || slug.startsWith(cTitleSlug)) {
+            score += 100;
+          } else {
+            const titleWords = cTitleSlug.split('-').filter((w) => w.length >= 3);
+            const matchingTitleWords = titleWords.filter((w) => slug.includes(w));
+            score += matchingTitleWords.length * 25;
+          }
 
           if (score > bestScore) {
             bestScore = score;
@@ -110,7 +129,10 @@ async function getJobBySlug(rawSlug: string): Promise<RemoteJob | null> {
           }
         }
 
-        if (bestCandidate) return mapJobRow(bestCandidate);
+        // Only return if confidence score is sufficient (never return a mismatched company)
+        if (bestCandidate && bestScore >= 120) {
+          return mapJobRow(bestCandidate);
+        }
       }
     }
 
@@ -385,15 +407,15 @@ export default async function JobDetailPage({ params }: Props) {
                 <span style={{ color: '#38BDF8', fontWeight: 700, fontSize: '1.1rem' }}>{job.company}</span>
                 <span
                   style={{
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    color: '#34D399',
+                    background: job.is_verified_employer ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.14)',
+                    color: job.is_verified_employer ? '#34D399' : '#38BDF8',
                     fontSize: '0.72rem',
                     padding: '0.15rem 0.55rem',
                     borderRadius: '9999px',
                     fontWeight: 700,
                   }}
                 >
-                  ✓ VERIFIED EMPLOYER
+                  {job.is_verified_employer ? '✓ DIRECT EMPLOYER' : 'CURATED REMOTE ROLE'}
                 </span>
               </div>
               <h1 style={{ fontSize: '2.15rem', fontWeight: 800, margin: '0.3rem 0 0.75rem 0', lineHeight: '1.2' }}>
@@ -527,80 +549,21 @@ export default async function JobDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* Distributed Hiring & Evaluation Process Guide */}
-          <div style={{ marginTop: '2.5rem' }}>
-            <h2
-              style={{
-                fontSize: '1.35rem',
-                fontWeight: 700,
-                marginBottom: '1rem',
-                borderBottom: '1px solid var(--border-color)',
-                paddingBottom: '0.75rem',
-              }}
-            >
-              What to Expect in the Remote Hiring Process
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.7', marginBottom: '1rem' }}>
-              Distributed employers hiring for <strong>{job.title}</strong> positions typically evaluate candidates across four structured stages designed to measure both domain mastery and asynchronous collaboration:
-            </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '0.9rem',
-              }}
-            >
-              {[
-                {
-                  step: 'Stage 1: Profile & Async Review',
-                  detail: `Screening of your relevant ${job.category?.toLowerCase() || 'domain'} accomplishments, portfolio links, and timezone alignment (${job.location}).`,
-                },
-                {
-                  step: 'Stage 2: Recruiter Alignment Call',
-                  detail: `A 25–30 minute video conversation covering role scope at ${job.company}, compensation expectations (${job.salary}), and remote work workflows.`,
-                },
-                {
-                  step: 'Stage 3: Practical Role Assessment',
-                  detail: 'A scoped work-sample walkthrough, technical pairing session, or case study mirroring real-world deliverables.',
-                },
-                {
-                  step: 'Stage 4: Team & Leadership Loop',
-                  detail: 'Final cross-functional discussions with peers and hiring leadership, followed by written offer and onboarding.',
-                },
-              ].map((st, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: 'rgba(13, 22, 39, 0.65)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '0.85rem',
-                    padding: '1.1rem',
-                  }}
-                >
-                  <div style={{ fontWeight: 700, color: '#38BDF8', fontSize: '0.88rem', marginBottom: '0.35rem' }}>
-                    {st.step}
-                  </div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.83rem', lineHeight: '1.55' }}>{st.detail}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Editorial Candidate Preparation Guidance */}
+          {/* Sourcing & Application Transparency Notice */}
           <div
             style={{
-              marginTop: '2rem',
-              padding: '1.5rem',
-              background: 'rgba(13, 22, 39, 0.75)',
+              marginTop: '2.5rem',
+              padding: '1.4rem 1.6rem',
+              background: 'rgba(13, 22, 39, 0.65)',
               border: '1px solid var(--border-color)',
               borderRadius: '1rem',
             }}
           >
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.65rem', color: '#38BDF8' }}>
-              💡 Remote Jobs HQ Editorial Tip for Applicants
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.65' }}>
-              When applying for <strong>{job.title}</strong> at <strong>{job.company}</strong>, highlight specific examples of projects you have delivered autonomously in a distributed or cross-functional setting. Mention your primary working timezone ({job.location}) and link directly to relevant work samples, repositories, or case studies.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#38BDF8', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+              <ShieldCheck size={18} /> Position Verification & Application Notice
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.65', margin: 0 }}>
+              This remote vacancy for <strong>{job.title}</strong> is indexed by Remote Jobs HQ. Applications are routed directly to <strong>{job.company}</strong>&apos;s verified recruitment destination. We recommend submitting your application directly through the official link below.
             </p>
           </div>
 
@@ -642,14 +605,14 @@ export default async function JobDetailPage({ params }: Props) {
                 <div style={{ color: 'var(--text-subtle)' }}>Employment Type</div>
                 <div style={{ fontWeight: 600 }}>{job.job_type || 'Full-time'}</div>
               </div>
-              {job.salary && (
-                <div>
-                  <div style={{ color: 'var(--text-subtle)' }}>Estimated / Disclosed Pay</div>
-                  <div style={{ fontWeight: 700, color: '#34D399' }}>{job.salary}</div>
-                </div>
-              )}
               <div>
-                <div style={{ color: 'var(--text-subtle)' }}>Date Verified</div>
+                <div style={{ color: 'var(--text-subtle)' }}>Disclosed Compensation</div>
+                <div style={{ fontWeight: 700, color: job.salary ? '#34D399' : 'var(--text-muted)' }}>
+                  {job.salary || 'Not disclosed by employer'}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-subtle)' }}>Date Listed</div>
                 <div style={{ fontWeight: 600 }}>{new Date(job.created_at).toLocaleDateString()}</div>
               </div>
             </div>
@@ -786,15 +749,15 @@ export default async function JobDetailPage({ params }: Props) {
                       </span>
                       <span
                         style={{
-                          background: 'rgba(16, 185, 129, 0.14)',
-                          color: '#34D399',
+                          background: simJob.is_verified_employer ? 'rgba(16, 185, 129, 0.14)' : 'rgba(56, 189, 248, 0.12)',
+                          color: simJob.is_verified_employer ? '#34D399' : '#38BDF8',
                           fontSize: '0.68rem',
                           padding: '0.1rem 0.45rem',
                           borderRadius: '4px',
                           fontWeight: 700,
                         }}
                       >
-                        VERIFIED
+                        {simJob.is_verified_employer ? 'DIRECT' : 'CURATED'}
                       </span>
                     </div>
                     <div className="job-title">{simJob.title}</div>

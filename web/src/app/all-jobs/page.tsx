@@ -168,15 +168,15 @@ export default async function AllJobsDirectoryPage({
                   </span>
                   <span
                     style={{
-                      background: 'rgba(16, 185, 129, 0.14)',
-                      color: '#34D399',
+                      background: job.is_verified_employer ? 'rgba(16, 185, 129, 0.14)' : 'rgba(56, 189, 248, 0.12)',
+                      color: job.is_verified_employer ? '#34D399' : '#38BDF8',
                       fontSize: '0.68rem',
                       padding: '0.1rem 0.45rem',
                       borderRadius: '4px',
                       fontWeight: 700,
                     }}
                   >
-                    VERIFIED
+                    {job.is_verified_employer ? 'DIRECT' : 'CURATED'}
                   </span>
                 </div>
                 <div className="job-title">{job.title}</div>

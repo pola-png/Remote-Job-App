@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Send, ShieldCheck, FileText, UserCheck } from 'lucide-react';
+import { CheckCircle2, Send, ShieldCheck, FileText, UserCheck, ExternalLink } from 'lucide-react';
 
 interface DirectApplyBoxProps {
   jobTitle: string;
@@ -16,6 +16,7 @@ export default function DirectApplyBox({
   companyName,
   publicRef,
   location,
+  directEmployerUrl,
 }: DirectApplyBoxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -106,13 +107,24 @@ export default function DirectApplyBox({
             Submit your candidate profile directly for <strong>{companyName}</strong> ({location}). Zero account registration fees—100% free for remote job seekers.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            {directEmployerUrl ? (
+              <a
+                href={directEmployerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary"
+                style={{ fontSize: '1.05rem', padding: '0.9rem 2.25rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                Apply on Official Employer Site <ExternalLink size={18} />
+              </a>
+            ) : null}
             <button
               type="button"
               onClick={() => setIsOpen(true)}
-              className="btn-primary"
+              className={directEmployerUrl ? 'btn-secondary' : 'btn-primary'}
               style={{ fontSize: '1.05rem', padding: '0.9rem 2.25rem' }}
             >
-              <FileText size={18} /> Apply Now on Remote Jobs HQ
+              <FileText size={18} /> Submit Application via Remote Jobs HQ
             </button>
           </div>
         </div>

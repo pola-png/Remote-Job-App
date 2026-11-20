@@ -64,8 +64,8 @@ export const CAREER_GUIDES: CareerGuide[] = [
           'Include a dedicated "Distributed Work & Collaboration" line in your skills or experience section. Hiring teams look for signals that you have either worked remotely before, contributed to open-source projects, or managed complex cross-office deliverables without micromanagement.',
         ],
         callout: {
-          title: 'Pro Tip: The 60-Second Proof-of-Work Link',
-          text: 'Include a short 90-second Loom video walkthrough or a 1-page Notion case study linked at the top of your resume. Candidates who attach a concise work sample see up to 3.4x higher interview callback rates on Remote Jobs HQ.',
+          title: 'Pro Tip: The Proof-of-Work Link',
+          text: 'Include a concise 90-second Loom video walkthrough or a 1-page Notion case study linked at the top of your resume. Tangible work samples give remote hiring managers immediate confidence in your communication style and execution capability before scheduling live video calls.',
         },
       },
       {
@@ -324,6 +324,105 @@ export const CAREER_GUIDES: CareerGuide[] = [
           'Marketing & Sales: "Generated $1.8M in qualified enterprise pipeline across North America and EMEA via targeted outbound and SEO content clusters."',
           'Customer Support & Operations: "Maintained 98.4% CSAT across 1,400+ monthly tickets while authoring 45 self-service knowledge base articles that deflected 28% of repetitive inquiries."',
         ],
+      },
+    ],
+  },
+  {
+    slug: 'remote-jobs-for-africans-and-international-applicants',
+    title: 'How to Land International Remote Jobs from Nigeria and Across Africa',
+    category: 'Global Careers',
+    readTime: '11 min read',
+    publishedAt: '2025-02-15',
+    updatedAt: '2025-03-01',
+    author: {
+      name: 'David Chen',
+      role: 'Distributed Talent Advisor at Remote Jobs HQ',
+    },
+    excerpt:
+      'A practical, research-backed guide for professionals in Nigeria, Kenya, Ghana, South Africa, and Egypt seeking USD-denominated remote contracts with global tech companies.',
+    keyTakeaways: [
+      'Focus specifically on "Worldwide / Anywhere" and EMEA-aligned job postings where GMT/WAT timezone overlap is an advantage.',
+      'Understand contractor agreements vs. Employer of Record (EOR) hiring channels (Deel, Remote.com, Oyster).',
+      'Set up reliable international payment channels (USD Domiciliary Accounts, Payoneer, Geegpay, Wise) before signing offers.',
+      'Overcome common infrastructure screening hurdles by proving reliable fiber internet, power backup, and quiet workspace setup.',
+    ],
+    sections: [
+      {
+        heading: '1. Why Global Companies Are Actively Hiring African Talent',
+        body: [
+          'The international hiring landscape has evolved dramatically over the last three years. US and European companies increasingly hire outside traditional tech hubs to build round-the-clock engineering and support organizations.',
+          'West Africa (WAT / UTC+1) and East Africa (EAT / UTC+3) have near-perfect timezone alignment with European business hours and substantial 4-to-6 hour daily overlap with US Eastern teams (EST / UTC-5). When applying, position your timezone alignment as a strategic benefit for asynchronous handover rather than a limitation.',
+        ],
+        bullets: [
+          'Filter search results specifically by "Worldwide", "Anywhere", or "EMEA" rather than US-only roles that require US work authorization.',
+          'Target remote-first tech companies (GitLab, Automattic, Canonical, DuckDuckGo, Buffer, and fast-growing YC startups) known for hiring globally without geographical salary penalties.',
+          'Highlight your primary working hours in UTC/WAT directly in your resume header.',
+        ],
+      },
+      {
+        heading: '2. Navigating Contracts, Taxes, and USD Payment Infrastructure',
+        body: [
+          'When an employer based in San Francisco or London hires you in Nigeria or Ghana, they will almost always structure the agreement in one of two ways:',
+          '(1) An Employer of Record (EOR) contract: Platforms like Deel, Remote, or Multiplier legally employ you in-country, handle local tax deductions (such as PAYE), and deposit local currency directly into your commercial bank account.',
+          '(2) An Independent Contractor Agreement (B2B): You bill the company in USD or EUR monthly using invoice templates and receive payments via international wire transfer or contractor platforms.',
+        ],
+        callout: {
+          title: 'Essential Financial Setup Checklist',
+          text: 'Before entering final salary negotiation, ensure you have an active USD Domiciliary Account at a tier-1 bank or a verified cross-border wallet (Geegpay, Payoneer, or Wise Business) to prevent delayed initial payouts.',
+        },
+      },
+      {
+        heading: '3. Proving Infrastructure Reliability During Interview Loops',
+        body: [
+          'Hiring managers who have not previously hired in emerging markets sometimes harbor unspoken concerns about power stability, internet speed, and hardware.',
+          'Address these objections proactively before the interviewer even asks. In your introductory video call, mention that your workstation includes dual-ISP failover (e.g. primary fiber + backup 5G mobile hotspot) and dedicated uninterruptible power supply (UPS or inverter system). Demonstrating proactive operational ownership instantly puts you ahead of 90% of applicants.',
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'entry-level-no-experience-remote-jobs-guide',
+    title: 'How to Break Into Entry-Level Remote Work With No Prior Remote Experience',
+    category: 'Career Transition',
+    readTime: '9 min read',
+    publishedAt: '2025-02-18',
+    updatedAt: '2025-03-02',
+    author: {
+      name: 'Elena Rostova',
+      role: 'Head of Talent & Editorial at Remote Jobs HQ',
+    },
+    excerpt:
+      'A realistic blueprint for transitioning into your first remote role across Customer Experience, QA, Operations, Data Curation, and Sales Development.',
+    keyTakeaways: [
+      'Target entry-level remote gateways: Customer Support, Technical Writing, Data Annotation/Curation, QA Testing, and BDR/SDR roles.',
+      'Translate in-person customer service or administration skills into remote communication metrics.',
+      'Complete free domain-specific certifications (HubSpot, Zendesk, Google Data Analytics) to validate competency without formal experience.',
+      'Build a public Notion portfolio demonstrating written clarity and independent problem solving.',
+    ],
+    sections: [
+      {
+        heading: '1. The 5 Best Gateway Roles for First-Time Remote Workers',
+        body: [
+          'Landing a senior engineering or product role without experience is rare, but distributed companies continuously hire hungry, detail-oriented talent across five core operational disciplines:',
+        ],
+        bullets: [
+          'Customer Experience & Technical Support: Resolving user tickets via Zendesk, Intercom, or email. High focus on empathy, written clarity, and product curiosity ($35,000–$55,000 USD).',
+          'Sales Development Representative (SDR / BDR): Conducting outbound prospect research, drafting personalized emails, and booking software demos ($45,000–$65,000 USD base + commission).',
+          'Data Annotation & AI Curation: Evaluating LLM outputs, labeling training datasets, and auditing content quality ($18–$30 USD / hr).',
+          'Junior QA & Manual Software Testing: Executing test scripts, filing reproducible bug reports on Jira, and verifying browser compatibility ($40,000–$60,000 USD).',
+          'Virtual Operations & Community Moderation: Managing Discord/Slack communities, coordinating customer onboarding schedules, and maintaining documentation ($35,000–$50,000 USD).',
+        ],
+      },
+      {
+        heading: '2. Translating Non-Remote Backgrounds into Remote Signals',
+        body: [
+          'Even if your background is in retail, banking, teaching, or administration, you have transferable skills that remote managers value: written communication, conflict resolution, ticket management, and rapid learning.',
+          'Reframe your resume bullets around the asynchronous outcomes you achieved rather than physical tasks. Emphasize self-management, written correspondence accuracy, and technical tools you adopted independently.',
+        ],
+        callout: {
+          title: 'The Free Certification Advantage',
+          text: 'Spend 20 hours completing verified badges like the Zendesk Customer Service certification, HubSpot Inbound Sales, or Google Workspace Administrator. Adding verified credentials to LinkedIn and your resume immediately signals initiative.',
+        },
       },
     ],
   },

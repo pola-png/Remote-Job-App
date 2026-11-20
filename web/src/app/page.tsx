@@ -16,7 +16,6 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
-import AdSenseSlot from '@/app/components/AdSenseSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,13 +106,13 @@ export default async function HomePage({
 
         <div className="hero-content">
           <div className="hero-badge">
-            <Zap size={14} /> {formattedTotal} Live Verified Remote Opportunities
+            <Zap size={14} /> {formattedTotal} Active Remote Opportunities
           </div>
           <h1 className="hero-title">
             Land Your Dream <span>Remote Career</span> Anywhere In The World
           </h1>
           <p className="hero-subtitle">
-            Explore <strong>{formattedTotal}</strong> verified remote positions in software engineering, product, design, AI, data, marketing, and operations—complete with transparent salary benchmarks and in-depth distributed career guides.
+            Explore <strong>{formattedTotal}</strong> curated remote positions in software engineering, product, design, AI, data, marketing, and operations—complete with transparent salary benchmarks and in-depth distributed career guides.
           </p>
 
           {/* Visual Remote Work Highlights Strip */}
@@ -132,7 +131,7 @@ export default async function HomePage({
                 alt="Product Designer"
                 className="hero-visual-thumb"
               />
-              <span>💰 Transparent USD Salary Bands</span>
+              <span>💰 Market Salary Benchmarks</span>
             </div>
             <div className="hero-visual-card">
               <img
@@ -140,7 +139,7 @@ export default async function HomePage({
                 alt="Distributed Team Lead"
                 className="hero-visual-thumb"
               />
-              <span>🛡️ 100% Vetted Direct Employers</span>
+              <span>🛡️ Curated Global Remote Roles</span>
             </div>
           </div>
 
@@ -202,7 +201,7 @@ export default async function HomePage({
             </div>
             <div>
               <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#A855F7' }}>$65k – $215k</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Verified Annual Salary Bands</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Market Salary Benchmarks</div>
             </div>
             <div>
               <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#FBBF24' }}>Daily Curation</div>
@@ -228,7 +227,7 @@ export default async function HomePage({
             <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>
               {searchQuery
                 ? `🔍 Search Results for "${searchQuery}"`
-                : '🔥 Featured & Latest Verified Remote Positions'}
+                : '🔥 Featured & Latest Remote Positions'}
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>
               Showing {jobs.length} curated openings out of <strong>{formattedTotal}</strong> total active remote jobs
@@ -287,15 +286,15 @@ export default async function HomePage({
                         </span>
                         <span
                           style={{
-                            background: 'rgba(16, 185, 129, 0.14)',
-                            color: '#34D399',
+                            background: job.is_verified_employer ? 'rgba(16, 185, 129, 0.14)' : 'rgba(56, 189, 248, 0.12)',
+                            color: job.is_verified_employer ? '#34D399' : '#38BDF8',
                             fontSize: '0.68rem',
                             padding: '0.1rem 0.45rem',
                             borderRadius: '4px',
                             fontWeight: 700,
                           }}
                         >
-                          VERIFIED
+                          {job.is_verified_employer ? 'DIRECT' : 'CURATED'}
                         </span>
                       </div>
                       <div className="job-title">{job.title}</div>
@@ -329,8 +328,6 @@ export default async function HomePage({
                     </span>
                   </div>
                 </Link>
-
-                {index === 6 && <AdSenseSlot className="landing-feed-adsense" />}
               </React.Fragment>
             ))
           )}
@@ -348,7 +345,7 @@ export default async function HomePage({
           }}
         >
           <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Explore All {formattedTotal} Verified Remote Opportunities
+            Explore All {formattedTotal} Active Remote Opportunities
           </h3>
           <p style={{ color: 'var(--text-muted)', maxWidth: '620px', margin: '0 auto 1.5rem auto', fontSize: '0.95rem' }}>
             You are viewing the 15 latest openings on the homepage. Browse our complete, paginated directory to filter across all {formattedTotal} active remote roles worldwide.

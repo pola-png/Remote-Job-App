@@ -46,9 +46,9 @@ export default function PostJobPage() {
           direct_apply_url: formData.apply_url,
           description: formData.description,
           requirements: formData.requirements ? [formData.requirements] : [],
-          status: 'active',
-          source: 'Direct',
-          is_verified_employer: true,
+          status: 'pending_review',
+          source: 'Direct Submission',
+          is_verified_employer: false,
           posted_timestamp: Date.now(),
         },
       ]);
@@ -73,23 +73,23 @@ export default function PostJobPage() {
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '1.5rem', padding: '2.5rem' }}>
         <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
           <div className="hero-badge">
-            <Sparkles size={14} /> Reach 250,000+ Remote Job Seekers
+            <Sparkles size={14} /> Reach Qualified Remote Candidates
           </div>
           <h1 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.5rem' }}>Post a Remote Job</h1>
           <p style={{ color: 'var(--text-muted)' }}>
-            Your job listing will be distributed instantly across our web platform, Google for Jobs, and push-notified to our Android mobile app users.
+            Submit your remote position for review. Our editorial team validates employer identity and job details within 24 hours to ensure transparency and protect job seekers.
           </p>
         </div>
 
         {success ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
             <CheckCircle2 size={64} color="#34D399" style={{ margin: '0 auto 1.5rem auto' }} />
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.75rem' }}>Job Successfully Published!</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-              Your remote job is now live on Remote Jobs HQ and syncs across web and mobile.
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.75rem' }}>Job Submitted for Review</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', maxWidth: '520px', margin: '0 auto 2rem auto' }}>
+              Thank you for submitting your opening. Our moderation team reviews all employer submissions to verify company legitimacy and job details before making them public on Remote Jobs HQ.
             </p>
-            <Link href="/" className="btn-primary">
-              View on Live Job Feed
+            <Link href="/all-jobs" className="btn-primary">
+              Browse Active Remote Jobs
             </Link>
           </div>
         ) : (

@@ -116,5 +116,7 @@ Thumbs.db
 *.keystore
 *.aab
 *.apk
+*.pem
+upload_certificate.pem
 android/key.properties
 key.properties

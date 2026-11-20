@@ -17,7 +17,7 @@ export const JOB_LIST_COLUMNS =
  * Column projection for single job detail view (excludes `company_logo`, `direct_apply_url`, and `source`).
  */
 export const JOB_DETAIL_COLUMNS =
-  'id, title, company, location, job_type, salary_range, salary_min, salary_max, category, tags, description, requirements, benefits, is_featured, is_verified_employer, status, created_at, posted_timestamp';
+  'id, title, company, location, job_type, salary_range, salary_min, salary_max, category, tags, description, requirements, benefits, is_featured, is_verified_employer, status, created_at, posted_timestamp, direct_apply_url';
 
 
 export interface RemoteJob {
@@ -379,89 +379,36 @@ function buildTailoredJobLists(row: any, cleanTags: string[]): {
   benefits: string[];
   responsibilities: string[];
 } {
-  const title = row.title || 'Remote Specialist';
-  const company = row.company || 'the organization';
-  const cat = (row.category || 'DEVELOPMENT').toUpperCase();
-  const loc = row.location || 'Remote (Worldwide)';
-  const tagSummary = cleanTags.length > 0 ? cleanTags.slice(0, 3).join(', ') : 'modern cloud & collaboration tools';
-
   const rawReqs = Array.isArray(row.requirements)
     ? row.requirements
     : typeof row.requirements === 'string'
     ? [row.requirements]
     : [];
 
-  const isGenericReq =
-    rawReqs.length === 0 ||
-    rawReqs.some((r: string) =>
-      BOILERPLATE_REQ_FRAGMENTS.some((frag) => String(r).toLowerCase().includes(frag))
-    );
+  const rawBenefits = Array.isArray(row.benefits)
+    ? row.benefits
+    : typeof row.benefits === 'string'
+    ? [row.benefits]
+    : [];
 
-  let requirements: string[] = [];
-  if (!isGenericReq) {
-    requirements = rawReqs.map((r: string) => sanitizeJobText(r)).filter(Boolean);
-  } else {
-    if (cat === 'DEVELOPMENT') {
-      requirements = [
-        `Proven hands-on production experience in ${title} roles or closely related software engineering disciplines (${tagSummary}).`,
-        `Strong architectural understanding of scalable systems, automated testing, code reviews, and CI/CD delivery pipelines.`,
-        `Track record of shipping reliable features asynchronously within distributed engineering teams at companies like ${company}.`,
-        `Clear written and verbal technical communication skills for RFCs, system documentation, and cross-functional planning.`,
-        `Comfort working independently in a remote environment (${loc}) with strong ownership of production quality.`,
-      ];
-    } else if (cat === 'DESIGN') {
-      requirements = [
-        `Strong portfolio demonstrating end-to-end user experience, interaction design, and design systems expertise relevant to ${title}.`,
-        `Proficiency with modern collaborative design and prototyping workflows (${tagSummary}, Figma, user research synthesis).`,
-        `Ability to translate complex product workflows into intuitive, accessible interfaces alongside product and engineering partners at ${company}.`,
-        `Experience conducting usability testing, iterating from quantitative/qualitative feedback, and maintaining visual consistency.`,
-        `Excellent asynchronous presentation and documentation skills suited for a ${loc} team.`,
-      ];
-    } else if (cat === 'DATA') {
-      requirements = [
-        `Demonstrated experience in ${title} workflows, including data modeling, statistical analysis, or ML/AI pipelines (${tagSummary}).`,
-        `High proficiency with SQL, Python, or modern cloud data warehouses, ETL orchestration, and business intelligence tooling.`,
-        `Ability to partner with stakeholders at ${company} to translate ambiguous business questions into actionable metrics and models.`,
-        `Strong focus on data governance, reproducibility, pipeline reliability, and clear executive reporting.`,
-        `Self-directed work style suited for distributed collaboration across ${loc}.`,
-      ];
-    } else if (cat === 'MARKETING' || cat === 'WRITING') {
-      requirements = [
-        `Proven track record executing high-impact campaigns, content strategy, or growth initiatives as a ${title} (${tagSummary}).`,
-        `Strong analytical mindset with experience measuring attribution, conversion funnels, organic reach, and ROI.`,
-        `Exceptional storytelling, editorial precision, and brand voice consistency tailored to ${company}'s target audience.`,
-        `Ability to collaborate asynchronously with product, design, and leadership teams across ${loc}.`,
-      ];
-    } else if (cat === 'SALES') {
-      requirements = [
-        `Demonstrated quota-carrying or pipeline-generation success in a ${title} capacity (${tagSummary}).`,
-        `Strong consultative discovery, executive presentation, and relationship management skills across full sales cycles.`,
-        `Experience maintaining accurate CRM hygiene, forecasting, and collaborating with revenue operations at ${company}.`,
-        `Self-motivated, results-driven approach optimized for remote client engagement (${loc}).`,
-      ];
-    } else {
-      requirements = [
-        `Proven professional background and domain mastery directly relevant to the ${title} position at ${company}.`,
-        `Hands-on familiarity with modern remote workflows and core functional stacks (${tagSummary}).`,
-        `Exceptional written and verbal communication skills for asynchronous documentation and stakeholder updates.`,
-        `High reliability, attention to detail, and ability to prioritize competing deliverables independently (${loc}).`,
-      ];
-    }
-  }
+  const rawResponsibilities = Array.isArray(row.responsibilities)
+    ? row.responsibilities
+    : typeof row.responsibilities === 'string'
+    ? [row.responsibilities]
+    : [];
 
-  const responsibilities = [
-    `Lead day-to-day execution and strategic deliverables for the ${title} function within ${company}'s distributed organization.`,
-    `Collaborate asynchronously and in real time with cross-functional peers across ${ tagSummary } to hit quarterly roadmap milestones.`,
-    `Document processes, decisions, and best practices clearly so global team members across ${loc} stay aligned.`,
-    `Continuously identify opportunities to improve quality, operational velocity, and customer impact.`,
-  ];
+  // Only retain authentic employer requirements; discard generic boilerplate
+  const requirements = rawReqs
+    .map((r: string) => sanitizeJobText(r))
+    .filter((r: string) => Boolean(r) && !BOILERPLATE_REQ_FRAGMENTS.some((frag) => r.toLowerCase().includes(frag)));
 
-  const benefits = [
-    `Remote-first work culture (${loc}) with flexible scheduling built around deep work and measurable outcomes.`,
-    `Competitive compensation package benchmarked to global remote market standards for ${title} professionals.`,
-    `Comprehensive health, wellness, and paid time off policies supporting long-term work-life balance.`,
-    `Home office setup & continuous learning allowances to support your professional growth at ${company}.`,
-  ];
+  const benefits = rawBenefits
+    .map((b: string) => sanitizeJobText(b))
+    .filter(Boolean);
+
+  const responsibilities = rawResponsibilities
+    .map((resp: string) => sanitizeJobText(resp))
+    .filter(Boolean);
 
   return { requirements, benefits, responsibilities };
 }
@@ -473,15 +420,18 @@ export function mapJobRow(row: any): RemoteJob {
 
   const rawSalary = row.salary_range || row.salary;
   const benchmark = getEstimatedSalaryBenchmark(title, row.category);
+  // Only display salary if actually disclosed by the employer; never invent salary bands as disclosed pay
   const displaySalary =
     rawSalary && !String(rawSalary).toLowerCase().includes('competitive')
       ? String(rawSalary).trim()
-      : benchmark.label;
+      : undefined;
 
   const { requirements, benefits, responsibilities } = buildTailoredJobLists(
     { ...row, title, company },
     cleanTags
   );
+
+  const { cleanUrl, isDirectEmployerUrl } = sanitizeApplyUrl(row.direct_apply_url || row.apply_url);
 
   return {
     id: row.id,
@@ -493,8 +443,8 @@ export function mapJobRow(row: any): RemoteJob {
     location: sanitizeJobText(row.location) || '100% Remote / Worldwide',
     salary: displaySalary,
     salary_range: displaySalary,
-    salary_min: typeof row.salary_min === 'number' ? row.salary_min : (row.salary_min ? Number(row.salary_min) : benchmark.min),
-    salary_max: typeof row.salary_max === 'number' ? row.salary_max : (row.salary_max ? Number(row.salary_max) : benchmark.max),
+    salary_min: typeof row.salary_min === 'number' ? row.salary_min : (row.salary_min ? Number(row.salary_min) : undefined),
+    salary_max: typeof row.salary_max === 'number' ? row.salary_max : (row.salary_max ? Number(row.salary_max) : undefined),
     job_type: row.job_type || 'Full-time',
     category: row.category || 'DEVELOPMENT',
     tags: cleanTags,
@@ -502,12 +452,11 @@ export function mapJobRow(row: any): RemoteJob {
     requirements,
     benefits,
     responsibilities,
-    // Keep all candidate applications 100% first-party on remotejobshq.online
-    apply_url: undefined,
-    direct_apply_url: undefined,
-    has_direct_employer_url: false,
-    is_featured: row.is_featured || row.is_verified_employer || false,
-    is_verified_employer: row.is_verified_employer ?? true,
+    apply_url: cleanUrl,
+    direct_apply_url: cleanUrl,
+    has_direct_employer_url: Boolean(cleanUrl && isDirectEmployerUrl),
+    is_featured: row.is_featured || false,
+    is_verified_employer: Boolean(row.is_verified_employer),
     status: row.status || 'active',
     created_at: row.created_at || new Date().toISOString(),
     posted_timestamp: row.posted_timestamp || undefined,
