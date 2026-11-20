@@ -243,6 +243,37 @@ export default function ContactPage() {
             </button>
           </form>
         )}
+
+        {/* Operational Entity & SLA Details */}
+        <div
+          style={{
+            marginTop: '2.5rem',
+            paddingTop: '2rem',
+            borderTop: '1px solid var(--border-color)',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: '1.5rem',
+            fontSize: '0.88rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, color: '#F8FAFC', marginBottom: '0.4rem' }}>
+              📍 Operational Entity & Publication
+            </div>
+            <div>Remote Jobs HQ Talent & Media Operations</div>
+            <div>Independent Digital Remote Career Publication</div>
+            <div>Worldwide Distributed Operations</div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, color: '#F8FAFC', marginBottom: '0.4rem' }}>
+              ⏱️ Support Hours & Service Level Agreement
+            </div>
+            <div>Monday – Friday: 08:00 to 18:00 UTC</div>
+            <div>Response Time: Within 24 business hours</div>
+            <div>Direct Support: <a href="mailto:support@remotejobshq.online" style={{ color: '#38BDF8' }}>support@remotejobshq.online</a></div>
+          </div>
+        </div>
       </div>
     </div>
   );
