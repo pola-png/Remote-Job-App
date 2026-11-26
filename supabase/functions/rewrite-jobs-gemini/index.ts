@@ -7,11 +7,11 @@ const corsHeaders = {
 };
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://tnjmwahnzosuhqpkvuwo.supabase.co";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "https://gflwvtxpziasbdraugwj.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
   Deno.env.get("SUPABASE_ANON_KEY") ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuam13YWhuem9zdWhxcGt2dXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4NzUxNDUsImV4cCI6MjEwMjQ1MTE0NX0.qh5eDqwr79ggAntgay1f9Marwi6uzKxLJKqjWy0dsrM";
+  "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -19,12 +19,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 // Call Gemini API via fetch with fallback models
 async function callGemini(prompt: string): Promise<string> {
-  const models = ["gemini-flash-latest", "gemini-3-flash-preview"];
+  const models = ["gemini-3.8-flash", "gemini-3.5-flash"];
   let lastError: Error | null = null;
 
   for (const model of models) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8-second max per request
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15-second max per request
 
     try {
       const res = await fetch(
@@ -38,6 +38,7 @@ async function callGemini(prompt: string): Promise<string> {
               temperature: 0.3,
               topP: 0.85,
               maxOutputTokens: 850,
+              thinkingConfig: { thinkingBudget: 0 },
             },
           }),
           signal: controller.signal,
